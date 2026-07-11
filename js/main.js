@@ -3,7 +3,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 
-const VERSION = '0.8.1';   // v= para deploy/guard
+const VERSION = '0.8.2';   // v= para deploy/guard
 const $ = s => document.querySelector(s);
 const DRONE_R = 0.30;      // radio de colisión del dron (esfera)
 const PICKUP_R = 0.75;     // radio para recolectar un punto
@@ -569,7 +569,8 @@ const _camGoal = new THREE.Vector3(), _look = new THREE.Vector3();
 let camYaw = 0, _freezeCam = false;   // _freezeCam: solo para capturas de prueba (vista cenital)
 function updateCamera(dt) {
   if (!drone || _freezeCam) return;
-  const back = 2.5, up = 0.9;
+  // tras CHOCAR la cámara RETROCEDE y sube un poco → se aprecia el despiece completo (Jorge 2026-07-11)
+  const back = state === 'lose' ? 4.4 : 2.5, up = state === 'lose' ? 1.8 : 0.9;
   // la cámara RETRASA el giro respecto al dron → al girar SE VE al dron rotar sobre su propio eje
   let d = phys.yaw - camYaw; d = Math.atan2(Math.sin(d), Math.cos(d));
   camYaw += d * Math.min(1, 3.2 * dt);
@@ -688,7 +689,7 @@ addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault();
 // Cada esquina inferior = pivote del pulgar; dividida por una línea ⟂ a la diagonal esquina→centro:
 // disco interno (pegado a la esquina) = 1er botón, anillo externo (hacia el centro) = 2do botón.
 // IZQ: interno ◀ / externo ▶ · DER: interno ▼atrás / externo ▲adelante.
-const ZONE = { R1: 0.40, R2: 0.60 };   // fracción del ALTO: R1=divisor (esquina), R2=límite externo (zona 2 reducida ×0.7)
+const ZONE = { R1: 0.40, R2: 0.72 };   // fracción del ALTO: R1=divisor (esquina), R2=límite externo (zona 2 ampliada ×1.2, Jorge 2026-07-11)
 const zonesSvg = $('#touchZones'), SVGNS = 'http://www.w3.org/2000/svg', zonePaths = {};
 function zoneRadii() { const H = innerHeight; return { R1: ZONE.R1 * H, R2: ZONE.R2 * H }; }
 function buildZones() {
