@@ -3,7 +3,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 
-const VERSION = '0.8.6';   // v= para deploy/guard
+const VERSION = '0.8.7';   // v= para deploy/guard
 const $ = s => document.querySelector(s);
 const DRONE_R = 0.30;      // radio de colisión del dron (esfera)
 const PICKUP_R = 0.75;     // radio para recolectar un punto
@@ -63,6 +63,7 @@ const CRAFT_YAW = { drone: 0, coax: Math.PI };   // coax venía mirando ATRÁS (
 let house = null, drone = null, rotors = [], craft = LS.get('craft', 'drone'), levelIdx = 0, loadGen = 0;
 let state = 'pre', flightHeight = 2.5, tPrev = performance.now(), debris = [], fx = [];
 let _postWinCrashed = false;   // choque cosmético permitido UNA vez tras ganar (el dron no es invencible)
+let _heroPiece = null;         // pieza del GOL DE MUERTO: la cámara la sigue y no expira
 let sound = LS.get('snd', true);
 let ghost = LS.get('ghost', false);   // modo PRUEBA: no deja marca en el leaderboard global
 // cronómetro (objetivo secundario) + leaderboard por nivel
@@ -194,7 +195,7 @@ function buildLevel(idx) {
   drone.position.set(house.start.x, house.floorY, house.start.z);
   camYaw = 0;
   state = 'ready';
-  _lowWarned = false; _postWinCrashed = false;
+  _lowWarned = false; _postWinCrashed = false; _heroPiece = null;
   if (typeof _zonePtrs !== 'undefined') { _zonePtrs.clear(); controls._touch.left = controls._touch.right = controls._touch.accel = controls._touch.back = false; }
   $('#levelName').textContent = 'Nivel ' + (idx + 1) + ' · ' + house.name;
   $('#touch').classList.add('hidden');
@@ -340,6 +341,7 @@ function stepDebris(dt) {
       const g = house.goal.pos, gx = p.x - g.x, gy = p.y - g.y, gz = p.z - g.z;
       if (gx * gx + gy * gy + gz * gz < 0.75 * 0.75) {
         house._deadWin = true; state = 'win';
+        _heroPiece = d; d.hero = true;                 // la CÁMARA pasa a seguir a la pieza ganadora (Jorge)
         house.goal.mesh.visible = false; popBurst(g.x, g.y, g.z, 0xffd23f);
         synthWin();
         const bn = $('#banner'); $('#bTitle').textContent = '☠️🏁 ¡GOL DE MUERTO!'; $('#bHint').textContent = 'La pieza llegó por ti · Toca para seguir'; $('#bBoard').innerHTML = ''; bn.classList.remove('hidden');
@@ -347,7 +349,7 @@ function stepDebris(dt) {
         setTapLayer();
       }
     }
-    if (d.life > 2.4) { scene.remove(d.mesh); disposeMesh(d.mesh); debris.splice(i, 1); }
+    if (d.life > 2.4 && !d.hero) { scene.remove(d.mesh); disposeMesh(d.mesh); debris.splice(i, 1); }
   }
 }
 
@@ -407,7 +409,8 @@ const _lastRate = {};
 function playOne(name, gain = 1, pitchVar = 0) {
   if (!AC || !buffers[name] || !sound) return; const s = AC.createBufferSource(); s.buffer = buffers[name];
   if (pitchVar) {   // variación SENTIBLE: rango amplio + nunca dos seguidos parecidos (anti-repetición)
-    let r; do { r = 1 + (Math.random() * 2 - 1) * pitchVar; } while (_lastRate[name] != null && Math.abs(r - _lastRate[name]) < pitchVar * 0.5);
+    // rango ASIMÉTRICO (Jorge): poco hacia lo grave, más hacia lo agudo → [1−0.45·pv, 1+pv]
+    let r; do { r = 1 + (Math.random() * 1.45 - 0.45) * pitchVar; } while (_lastRate[name] != null && Math.abs(r - _lastRate[name]) < pitchVar * 0.45);
     _lastRate[name] = r; s.playbackRate.value = r;
     (window.__rates = window.__rates || []).push(+r.toFixed(3));
   }
@@ -596,6 +599,21 @@ const _camGoal = new THREE.Vector3(), _look = new THREE.Vector3();
 let camYaw = 0, _freezeCam = false;   // _freezeCam: solo para capturas de prueba (vista cenital)
 function updateCamera(dt) {
   if (!drone || _freezeCam) return;
+  // ⭐ CÁMARA-HÉROE (Jorge): tras el GOL DE MUERTO enfoca la PIEZA ganadora y la sigue de inmediato
+  if (_heroPiece && state === 'win') {
+    const hp = _heroPiece.mesh.position;
+    const dx = cam.position.x - hp.x, dz = cam.position.z - hp.z, hl = Math.hypot(dx, dz) || 1;
+    _camGoal.set(hp.x + (dx / hl) * 2.3, hp.y + 1.25, hp.z + (dz / hl) * 2.3);
+    cam.position.lerp(_camGoal, Math.min(1, 8 * dt));
+    if (house) {
+      const b = house.bounds, mM = 0.28;
+      cam.position.x = Math.max(b.minX + mM, Math.min(b.maxX - mM, cam.position.x));
+      cam.position.z = Math.max(b.minZ + mM, Math.min(b.maxZ - mM, cam.position.z));
+      cam.position.y = Math.min(Math.max(cam.position.y, 0.4), house.ceilingY - 0.12);
+    }
+    cam.lookAt(hp.x, hp.y, hp.z);
+    return;
+  }
   // tras CHOCAR la cámara RETROCEDE y sube un poco → se aprecia el despiece completo (Jorge 2026-07-11)
   const back = state === 'lose' ? 4.4 : 2.5, up = state === 'lose' ? 1.8 : 0.9;
   // la cámara RETRASA el giro respecto al dron → al girar SE VE al dron rotar sobre su propio eje
