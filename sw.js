@@ -1,12 +1,13 @@
 // sw.js — Service Worker de Dron Pilot. App-shell network-first (los deploys llegan al instante),
 // resto cache-first. Bumpear CACHE en cada deploy. Patrón heredado de RC Combat.
-const CACHE = 'dronpilot-0.9.0';
+const CACHE = 'dronpilot-0.9.1';
 const SHELL = [
   './', './index.html', './manifest.json',
   './js/physics_drone.js', './js/scene_house.js', './js/controls.js', './js/main.js',
   './vendor/three.module.js', './vendor/GLTFLoader.js', './vendor/utils/BufferGeometryUtils.js',
   './models/drone.glb', './models/simulus_heli.glb',
   './audio/drone_loop.mp3', './audio/drone_start.mp3', './audio/crash2.mp3', './audio/crash.mp3', './audio/silence.mp3',
+  './audio/balloon_pop.mp3', './audio/arcade_win.mp3',
   './img/cover.jpg', './img/wpA.png', './img/wpB.png', './img/wpC.png', './img/wpD.png', './img/wpE.png',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-180.png',
 ];

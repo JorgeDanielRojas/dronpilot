@@ -3,7 +3,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 
-const VERSION = '0.9.0';   // v= para deploy/guard
+const VERSION = '0.9.1';   // v= para deploy/guard
 const $ = s => document.querySelector(s);
 const DRONE_R = 0.30;      // radio de colisión del dron (esfera)
 const PICKUP_R = 0.75;     // radio para recolectar un punto
@@ -350,7 +350,7 @@ function stepDebris(dt) {
         _heroPiece = d; d.hero = true;                 // la CÁMARA pasa a seguir a la pieza ganadora (Jorge)
         try { if (_crashSrc) { _crashSrc.stop(); _crashSrc = null; } } catch (e) {}   // el estrellarse NO suena sobre el gol (Jorge)
         house.goal.mesh.visible = false; popBurst(g.x, g.y, g.z, 0xffd23f);
-        synthWin();
+        if (!playOne('deadwin', 0.9)) synthWin();   // arcade REAL solo aquí (Pixabay, Jorge); melodía-identidad → SIN pitch-var
         const bn = $('#banner'); $('#bTitle').textContent = '☠️🏁 ¡GOL DE MUERTO!'; $('#bHint').textContent = 'La pieza llegó por ti · Toca para seguir'; $('#bBoard').innerHTML = ''; bn.classList.remove('hidden');
         LS.set('ach_deadgoal', true);
         setTapLayer();
@@ -409,7 +409,8 @@ async function initAudio() {
   if (AC) return;
   AC = new (window.AudioContext || window.webkitAudioContext)();
   const load = async (name, url) => { try { const r = await fetch(url); const a = await r.arrayBuffer(); buffers[name] = await AC.decodeAudioData(a); } catch (e) {} };
-  await Promise.all([load('loop', 'audio/drone_loop.mp3'), load('start', 'audio/drone_start.mp3'), load('crash', 'audio/crash2.mp3')]);
+  await Promise.all([load('loop', 'audio/drone_loop.mp3'), load('start', 'audio/drone_start.mp3'), load('crash', 'audio/crash2.mp3'),
+    load('pop', 'audio/balloon_pop.mp3'), load('deadwin', 'audio/arcade_win.mp3')]);   // Pixabay, elegidos por Jorge 2026-07-11 (globo 3 + arcade 1)
 }
 // pitchVar = fracción de variación de tono EN VIVO (sonido que REPITE nunca suena idéntico; regla dura Jorge)
 const _lastRate = {};
@@ -723,7 +724,7 @@ function triggerTrap(t) {
   if (t.type === 'balloon') {
     if (t.mesh) t.mesh.visible = false;
     popBurst(t.pos.x, t.pos.y, t.pos.z, 0xff4d6d);
-    synthPop(1);
+    if (!playOne('pop', 1, 0.30)) synthPop(1);   // globo REAL (Pixabay, Jorge); repite → pitch-var; synth solo de fallback
   } else {
     robotShake(t.mesh);
     synthPop(0.8);
