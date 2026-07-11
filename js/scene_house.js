@@ -827,6 +827,7 @@
         cols.push({ shape: 'seg', ax: x, ay: y, az: z, bx: x, by: y, bz: z, r: BT, kind: 'obstacle', _bi: i });
       }
       cols.push({ shape: 'sphere', x, y, z, r: 0.15, kind: 'obstacle' });   // buje central (contacto real con el eje)
+      g.userData.snd = { x, y, z };                    // fuente del sonido de propela por proximidad
       step = (t) => {
         const ang = t * speed;
         if (axis === 'z') bg.rotation.z = ang; else bg.rotation.x = ang;
@@ -868,12 +869,33 @@
         jet.position.set(x, y + 1.4, z); g.add(jet);
         step = (t) => { active = !per || (((t + ph) % per) < duty * per); jet.visible = active; jet.scale.y = active ? 1 + 0.08 * Math.sin(t * 9) : 0.001; };
       } else {
-        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 0.5, 16), new THREE.MeshStandardMaterial({ color: 0x556070, metalness: 0.4 }));
-        body.rotation.z = Math.PI / 2; body.position.set(x, y + 0.5, z); g.add(body);
-        const bg2 = new THREE.Group(); bg2.position.set(x, y + 0.5, z); g.add(bg2);
-        for (let i = 0; i < 3; i++) { const bl = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.7, 0.12), new THREE.MeshStandardMaterial({ color: 0x9fb0c4 })); bl.rotation.x = i / 3 * Math.PI * 2; bg2.add(bl); }
+        // VENTILADOR: todo el conjunto MIRA hacia donde sopla (dir = f normalizado).
+        // Antes quedaba fijo al eje X aunque f fuera en Z → "sopla por donde no es" (bug Jorge 2026-07-11).
+        const dir = new THREE.Vector3(F[0], F[1], F[2]).normalize();
+        const fanG = new THREE.Group(); fanG.position.set(x, y + 0.5, z);
+        fanG.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);   // +Y local → dirección del viento
+        g.add(fanG);
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.44, 0.42, 16, 1, true), new THREE.MeshStandardMaterial({ color: 0x556070, metalness: 0.4, side: THREE.DoubleSide }));
+        fanG.add(body);
+        const hub = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), new THREE.MeshStandardMaterial({ color: 0x39404b, metalness: 0.5 }));
+        hub.position.y = 0.1; fanG.add(hub);
+        const bladeG = new THREE.Group(); bladeG.position.y = 0.08; fanG.add(bladeG);
+        for (let i = 0; i < 3; i++) {
+          const piv = new THREE.Group(); piv.rotation.y = i / 3 * Math.PI * 2; bladeG.add(piv);
+          const bl = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.04, 0.17), new THREE.MeshStandardMaterial({ color: 0x9fb0c4, metalness: 0.3 }));
+          bl.position.x = 0.27; bl.rotation.x = 0.55;   // paso de hélice: se LEE que empuja aire hacia +Y local
+          piv.add(bl);
+        }
+        // chorro translúcido: se VE hacia dónde sopla (mismo lenguaje visual del géiser)
+        const jet = new THREE.Mesh(new THREE.CylinderGeometry(0.58, 0.42, 1.7, 14, 1, true), new THREE.MeshStandardMaterial({ color: 0xdfeeff, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false }));
+        jet.position.y = 1.1; fanG.add(jet);
         cols.push({ shape: 'cyl', x, z, y0: y, y1: y + 1.0, r: 0.5, kind: 'obstacle' });   // el cuerpo sí es sólido
-        step = (t) => { active = !per || (((t + ph) % per) < duty * per); bg2.rotation.x = t * 26; };
+        step = (t) => {
+          active = !per || (((t + ph) % per) < duty * per);
+          bladeG.rotation.y = t * 9;                   // giro claramente visible (sin estrobo)
+          jet.visible = active; jet.scale.x = jet.scale.z = 1 + 0.05 * Math.sin(t * 7);
+        };
+        g.userData.snd = { x, y: y + 0.5, z };         // fuente del sonido de propela por proximidad
       }
       // viento: main lo consulta cada frame (fuerza si el dron está dentro de la zona y el pulso está activo)
       g.userData.windAt = (px, py, pz) => {
@@ -883,28 +905,46 @@
         return F;
       };
     } else if (m.type === 'cannon') {
-      // CAÑÓN: bala en PARÁBOLA de 45° cada `period` s (opcional `rotate` rad/s = apunta girando).
-      const aim0 = m.aim || 0, v0 = m.v0 || 6.1, per = m.period || 3, ph = m.phase || 0, rot = m.rotate || 0, h0 = (m.h0 != null ? m.h0 : 1.0) + by;
-      const v0h = v0 * Math.SQRT1_2, v0y = v0 * Math.SQRT1_2, G = 9.8, tFly = 2 * v0y / G;
+      // CAÑÓN (rework Jorge 2026-07-11): la bala SALE POR LA BOCA del barril (barril alineado por
+      // quaternion a la trayectoria real — antes la rotación Euler lo dejaba de lado), VARÍA elevación
+      // y fuerza por disparo (hash determinístico → testeable) y al caer REBOTA en el piso (no desaparece).
+      // Opcional `rotate` rad/s = apunta girando; dirección CONGELADA al momento del disparo.
+      const aim0 = m.aim || 0, v0base = m.v0 || 6.1, per = m.period || 3, ph = m.phase || 0, rot = m.rotate || 0;
+      const h0 = (m.h0 != null ? m.h0 : 1.0) + by, BR = 0.2, BLEN = 1.1;
       const base = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.55, 0.7, 16), new THREE.MeshStandardMaterial({ color: 0x6b7480, metalness: 0.3 }));
       base.position.set(x, by + 0.35, z); g.add(base);
-      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 1.1, 12), new THREE.MeshStandardMaterial({ color: 0x3d444e, metalness: 0.5 }));
-      g.add(barrel);
-      const ball = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10), new THREE.MeshStandardMaterial({ color: 0x2b2b2b, metalness: 0.4 }));
+      const barrelG = new THREE.Group(); barrelG.position.set(x, h0 - 0.35, z); g.add(barrelG);   // pivote (culata)
+      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, BLEN, 12), new THREE.MeshStandardMaterial({ color: 0x3d444e, metalness: 0.5 }));
+      barrel.position.y = BLEN / 2 - 0.15; barrelG.add(barrel);   // eje local +Y = línea de tiro
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(BR, 12, 10), new THREE.MeshStandardMaterial({ color: 0x2b2b2b, metalness: 0.4 }));
       g.add(ball);
       const col = { shape: 'sphere', x, y: -99, z, r: 0.22, kind: 'obstacle' }; cols.push(col);
       cols.push({ shape: 'cyl', x, z, y0: by, y1: by + 0.8, r: 0.5, kind: 'obstacle' });   // la base es sólida
+      const rand01 = n => { const s = Math.sin(n * 127.1 + x * 311.7 + z * 74.7) * 43758.5453; return s - Math.floor(s); };
+      const _up = new THREE.Vector3(0, 1, 0), _dir = new THREE.Vector3();
+      let shot = null, pt = 0, bp = null, bv = null;   // bp/bv = posición/velocidad VIVA de la bala
       step = (t) => {
-        const ft = (t + ph) % per;
-        const aim = aim0 + rot * (t + ph - ft);            // dirección CONGELADA al momento del disparo
-        barrel.position.set(x + Math.cos(aim) * 0.35, by + 0.75, z + Math.sin(aim) * 0.35);
-        barrel.rotation.set(0, -aim, -Math.PI / 4); barrel.rotation.order = 'YXZ'; barrel.rotation.set(0, -aim + Math.PI / 2, Math.PI / 4);
-        if (ft < tFly) {
-          const bx = x + Math.cos(aim) * (0.5 + v0h * ft), bz = z + Math.sin(aim) * (0.5 + v0h * ft);
-          const byy = h0 + v0y * ft - 4.9 * ft * ft;
-          ball.visible = true; ball.position.set(bx, byy, bz);
-          col.x = bx; col.y = byy; col.z = bz;
-        } else { ball.visible = false; col.y = -99; }
+        const dt = Math.min(Math.max(t - pt, 0), 0.05); pt = t;
+        const n = Math.floor((t + ph) / per);
+        if (n !== shot) {                              // DISPARO n: apuntar barril + bala nace en la BOCA
+          shot = n;
+          const aim = aim0 + rot * n * per;
+          const elev = 0.55 + rand01(n) * 0.45;        // 31°..57° (varía la trayectoria)
+          const v0 = v0base * (0.85 + rand01(n + 0.5) * 0.3);   // ±15% de fuerza
+          _dir.set(Math.cos(aim) * Math.cos(elev), Math.sin(elev), Math.sin(aim) * Math.cos(elev));
+          barrelG.quaternion.setFromUnitVectors(_up, _dir);
+          bp = new THREE.Vector3(x, h0 - 0.35, z).addScaledVector(_dir, BLEN - 0.15);   // boca real
+          bv = _dir.clone().multiplyScalar(v0);
+          ball.visible = true;
+        }
+        if (bp) {
+          bv.y -= 9.8 * dt; bp.addScaledVector(bv, dt);
+          if (bp.y < by + BR && bv.y < 0) {            // toca el piso → REBOTA y se va asentando
+            bp.y = by + BR; bv.y *= -0.45; bv.x *= 0.75; bv.z *= 0.75;
+            if (Math.abs(bv.y) < 0.4) bv.y = 0;
+          }
+          ball.position.copy(bp); col.x = bp.x; col.y = bp.y; col.z = bp.z;
+        }
       };
     } else if (m.type === 'gate') {
       // puerta doble que ABRE y CIERRA: 2 paneles deslizan sobre el eje transversal del pasillo
@@ -933,7 +973,7 @@
       };
     }
     step(0);
-    return { group: g, colliders: cols, step, windAt: g.userData.windAt || null };
+    return { group: g, colliders: cols, step, windAt: g.userData.windAt || null, snd: g.userData.snd || null };
   }
 
   function buildHouse(THREE, scene, level) {

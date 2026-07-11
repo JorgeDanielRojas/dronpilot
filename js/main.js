@@ -3,7 +3,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 
-const VERSION = '0.8.8';   // v= para deploy/guard
+const VERSION = '0.9.0';   // v= para deploy/guard
 const $ = s => document.querySelector(s);
 const DRONE_R = 0.30;      // radio de colisión del dron (esfera)
 const PICKUP_R = 0.75;     // radio para recolectar un punto
@@ -59,11 +59,12 @@ const CRAFT_TUNE = {
 };
 // giro (rad) que pone la NARIZ del modelo mirando a −Z (dirección de vuelo). Se calibra con render.
 const _AXY = new THREE.Vector3(0, 1, 0);
-const CRAFT_YAW = { drone: 0, coax: Math.PI };   // coax venía mirando ATRÁS (volaba de espaldas) → 180°
+const CRAFT_YAW = { drone: Math.PI, coax: Math.PI };   // AMBOS venían mirando ATRÁS (la cámara-gimbal del quad apunta a +Z = frente del modelo) → 180°
 let house = null, drone = null, rotors = [], craft = LS.get('craft', 'drone'), levelIdx = 0, loadGen = 0;
 let state = 'pre', flightHeight = 2.5, tPrev = performance.now(), debris = [], fx = [];
 let _postWinCrashed = false;   // choque cosmético permitido UNA vez tras ganar (el dron no es invencible)
 let _heroPiece = null;         // pieza del GOL DE MUERTO: la cámara la sigue y no expira
+let _crashSrc = null;          // fuente del sonido de choque (se CORTA si entra el gol de muerto)
 let sound = LS.get('snd', true);
 let ghost = LS.get('ghost', false);   // modo PRUEBA: no deja marca en el leaderboard global
 // cronómetro (objetivo secundario) + leaderboard por nivel
@@ -335,6 +336,11 @@ function stepDebris(dt) {
     if (debrisHit(p.x, p.y, nz, R)) { d.v.z *= -REST; d.w.x *= -0.7; } else p.z = nz;
     if (p.y < 0.03) { p.y = 0.03; d.v.y *= -0.35; d.v.x *= 0.6; d.v.z *= 0.6; }   // piso
     d.mesh.rotation.x += d.w.x * dt; d.mesh.rotation.y += d.w.y * dt;
+    // ⭐ Las PIEZAS también RECOGEN puntos y REVIENTAN globos después del choque (Jorge 2026-07-11)
+    if (state === 'lose' && house) {
+      for (const c of house.collectibles) { if (c.taken) continue; const cx = p.x - c.pos.x, cy = p.y - c.pos.y, cz = p.z - c.pos.z; if (cx * cx + cy * cy + cz * cz < 0.6 * 0.6) collectPoint(c); }
+      for (const t2 of house.traps) { if (!t2.armed) continue; const tx = p.x - t2.pos.x, tz = p.z - t2.pos.z; if (tx * tx + tz * tz < t2.r * t2.r * 0.64) { t2.armed = false; triggerTrap(t2); } }
+    }
     // ⭐ GOL DE MUERTO (Jorge 2026-07-11): si una PIEZA del despiece toca la meta (ya desbloqueada)
     // después de chocar → el nivel VALE, con logro especial (único mensaje que existe en el juego).
     if (state === 'lose' && house && !house._deadWin && pointsLeft() === 0) {
@@ -342,6 +348,7 @@ function stepDebris(dt) {
       if (gx * gx + gy * gy + gz * gz < 0.75 * 0.75) {
         house._deadWin = true; state = 'win';
         _heroPiece = d; d.hero = true;                 // la CÁMARA pasa a seguir a la pieza ganadora (Jorge)
+        try { if (_crashSrc) { _crashSrc.stop(); _crashSrc = null; } } catch (e) {}   // el estrellarse NO suena sobre el gol (Jorge)
         house.goal.mesh.visible = false; popBurst(g.x, g.y, g.z, 0xffd23f);
         synthWin();
         const bn = $('#banner'); $('#bTitle').textContent = '☠️🏁 ¡GOL DE MUERTO!'; $('#bHint').textContent = 'La pieza llegó por ti · Toca para seguir'; $('#bBoard').innerHTML = ''; bn.classList.remove('hidden');
@@ -423,6 +430,24 @@ function startLoop() {
 }
 function stopLoop() { if (loopSrc) { try { loopSrc.stop(); } catch (e) {} loopSrc = null; } }
 
+// sonido de VENTILADOR/propela por PROXIMIDAD (Jorge 2026-07-11): se oye al acercarse, volumen moderado.
+// Reusa el loop de propela a rate 0.55 (más grave que el dron → se distingue). Gain por distancia a la
+// fuente `snd` más cercana (fan/blower): pleno a ≤1.2 m, nada a 5.5 m, curva cuadrática, tope 0.18.
+let fanSrc = null, fanGain = null;
+function updateFanSound(dt) {
+  const srcs = (house && house.movers) ? house.movers.filter(m => m.snd) : [];
+  let d = Infinity;
+  for (const m of srcs) d = Math.min(d, Math.hypot(phys.pos.x - m.snd.x, phys.pos.y - m.snd.y, phys.pos.z - m.snd.z));
+  const near = Math.max(0, 1 - Math.max(0, d - 1.2) / 4.3);
+  const target = (sound && srcs.length && state !== 'pre') ? 0.18 * near * near : 0;
+  if (target > 0 && !fanSrc && AC && buffers.loop) {
+    fanSrc = AC.createBufferSource(); fanSrc.buffer = buffers.loop; fanSrc.loop = true; fanSrc.playbackRate.value = 0.55;
+    fanGain = AC.createGain(); fanGain.gain.value = 0; fanSrc.connect(fanGain).connect(AC.destination); fanSrc.start();
+  }
+  if (fanGain) fanGain.gain.value += (target - fanGain.gain.value) * Math.min(1, dt * 8);
+  window.__fanGain = fanGain ? fanGain.gain.value : 0;   // observable para el smoke
+}
+
 // ---------- flujo de vuelo ----------
 // ---- banner no-bloqueante + capa de toque (sin botones despegar/reintentar) ----
 function showBanner(title, hint) { /* SIN mensajes en pantalla (Jorge 2026-07-11): el toque sigue reintentando/siguiendo igual */ }
@@ -499,7 +524,7 @@ function endLevel(win) {
   } else {
     // NO tapamos la pantalla: se VE el choque — el dron se parte en SUS pedazos reales y la animación sigue.
     const noBattery = phys.battery <= 0;
-    explodeReal(phys.pos); if (drone) drone.visible = false; playOne('crash', 0.9, 0.40);
+    explodeReal(phys.pos); if (drone) drone.visible = false; _crashSrc = playOne('crash', 0.9, 0.40);
     showBanner(noBattery ? '🔋 Sin batería' : '💥 ¡Chocaste!', 'Toca para reintentar');
   }
   $('#timer').classList.add('hidden');
@@ -543,8 +568,9 @@ function frame() {
     if (state === 'fly') {
       levelTime = (now - levelStartT) / 1000; $('#timerV').textContent = levelTime.toFixed(1);   // cronómetro
       if (phys.state === 'crashed') {
-        // PILA AGOTADA: el dron CAE (física crashed) y SOLO se rompe al TOCAR EL PISO, no antes.
-        if (phys.pos.y <= phys.groundY + 0.06) endLevel(false);
+        // PILA AGOTADA: cae con física… y se comporta IGUAL que volando (Jorge 2026-07-11):
+        // si en la caída toca pared/objeto → despiece AHÍ; si llega al piso → se rompe en el piso.
+        if (hitWorld(phys.pos) || phys.pos.y <= phys.groundY + 0.06) endLevel(false);
       } else {
         const h = hitWorld(phys.pos);
         if (h) { endLevel(false); }                      // chocar pared/techo/obstáculo → se rompe al instante
@@ -564,7 +590,7 @@ function frame() {
       // El win YA contó (banner/score intactos) → el choque es cosmético, no cambia el resultado.
       if (hitWorld(phys.pos)) {
         _postWinCrashed = true;
-        explodeReal(phys.pos); if (drone) drone.visible = false; playOne('crash', 0.9, 0.40);
+        explodeReal(phys.pos); if (drone) drone.visible = false; _crashSrc = playOne('crash', 0.9, 0.40);
       }
     }
 
@@ -585,6 +611,7 @@ function frame() {
         if (w) { phys.pos.x += w[0] * dt; phys.pos.y += w[1] * dt; phys.pos.z += w[2] * dt; }
       }
     }
+    updateFanSound(dt);
   }
 
   stepDebris(dt);
@@ -614,8 +641,9 @@ function updateCamera(dt) {
     cam.lookAt(hp.x, hp.y, hp.z);
     return;
   }
-  // tras CHOCAR la cámara RETROCEDE y sube un poco → se aprecia el despiece completo (Jorge 2026-07-11)
-  const back = state === 'lose' ? 4.4 : 2.5, up = state === 'lose' ? 1.8 : 0.9;
+  // tras CHOCAR: ZOOM-OUT RÁPIDO y amplio → se ve el despiece entero y un posible GOL DE MUERTO (Jorge)
+  const back = state === 'lose' ? 7.2 : 2.5, up = state === 'lose' ? 3.4 : 0.9;
+  const lerpK = state === 'lose' ? 10 : 6;
   // la cámara RETRASA el giro respecto al dron → al girar SE VE al dron rotar sobre su propio eje
   let d = phys.yaw - camYaw; d = Math.atan2(Math.sin(d), Math.cos(d));
   camYaw += d * Math.min(1, 3.2 * dt);
@@ -623,7 +651,7 @@ function updateCamera(dt) {
   let gy = phys.pos.y + up;
   if (house) gy = Math.min(gy, house.ceilingY - 0.18);       // no atravesar el techo
   _camGoal.set(phys.pos.x - bx * back, gy, phys.pos.z - bz * back);
-  cam.position.lerp(_camGoal, Math.min(1, 6 * dt));
+  cam.position.lerp(_camGoal, Math.min(1, lerpK * dt));
   if (house) {
     const b = house.bounds, m = 0.28;   // no atravesar muros: mantener la cámara dentro del cuarto
     cam.position.x = Math.max(b.minX + m, Math.min(b.maxX - m, cam.position.x));
