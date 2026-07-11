@@ -151,7 +151,7 @@
         { x: 5.5, z: -8.5, w: 5, d: 5 },   // cuarto final  x[3,8] z[-11,-6]
       ],
       start: { x: 0, z: 9.5 }, goal: { x: 5.5, y: 2.6, z: -9 },
-      points: [{ x: -4.5, z: 8 }, { x: 0, z: 0 }, { x: 5.5, z: -8.5 }],   // lateral(bajo) · en la escalera · cuarto final(alto)
+      points: [{ x: -4.5, z: 8 }, { x: 0, z: 0 }, { x: 4.2, z: -7.2 }],   // lateral(bajo) · escalera · cuarto final CERCA de la meta pero NO pegado (regla dura)
       obstacles: [{ type: 'teddy', x: 2.2, z: 9 }, { type: 'lamp', x: -6, z: 9 }],
       traps: [{ x: 0, z: 3, r: 0.9, type: 'balloon' }],
       movers: [
@@ -330,7 +330,7 @@
       column: { x: 0, z: 0, r: 1.45, h: 3.4 },
       start: { x: 0, z: -5.2 },
       goal: { x: -2.5, y: 4.4, z: 0.5 },
-      points: [{ x: 1.8, z: -1.8 }, { x: 1.8, z: 1.8 }, { x: -1.8, z: 1.8 }],
+      points: [{ x: 1.8, z: -1.8 }, { x: 1.8, z: 1.8 }, { x: -1.27, z: 2.21 }],
     },
     { // 24 — LOS DOS PUENTES: dos puentes a distinta altura (1.6 y 2.6), péndulo en el bajo.
       name: 'Los dos puentes', ceiling: 5, flightHeight: 1.3,
@@ -404,7 +404,7 @@
       rects: [{ x: 0, z: 0, w: 13, d: 13 }],
       start: { x: 0, z: 5.6 },
       goal: { x: 0, y: 1.4, z: -5.5 },
-      points: [{ x: 0, z: 2.5 }, { x: -2.5, z: -1 }, { x: 0, z: -4.5 }],
+      points: [{ x: 0, z: 2.5 }, { x: -2.5, z: -1 }, { x: 1.2, z: -4 }],
       movers: [
         { type: 'geyser', x: -2.5, z: 2.5, zone: { minx: -3.2, maxx: -1.8, minz: 1.8, maxz: 3.2 }, f: [0, 3.6, 0] },
         { type: 'geyser', x: 2.5, z: 2.5, zone: { minx: 1.8, maxx: 3.2, minz: 1.8, maxz: 3.2 }, f: [0, 3.6, 0] },
@@ -549,7 +549,7 @@
       column: { x: 0, z: 0, r: 1.55, h: 3.6 },
       start: { x: 0, z: 5.2 },
       goal: { x: 2.6, y: 4.5, z: -0.9 },
-      points: [{ x: -2.61, z: 0.7 }, { x: -0.7, z: -2.61 }, { x: 2.34, z: -1.35 }],
+      points: [{ x: -2.61, z: 0.7 }, { x: -0.7, z: -2.61 }, { x: 1.35, z: -2.34 }],
       movers: [{ type: 'cannon', x: -5.6, z: -5.6, aim: 45 * Math.PI / 180, v0: 7.4, period: 3, h0: 1.2 }],
     },
     { // 40 — LA TORMENTA (final): pista + cañón rotatorio + soplador en el corredor + géiser en la entrada.
