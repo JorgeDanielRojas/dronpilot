@@ -3,7 +3,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 
-const VERSION = '0.8.5';   // v= para deploy/guard
+const VERSION = '0.8.6';   // v= para deploy/guard
 const $ = s => document.querySelector(s);
 const DRONE_R = 0.30;      // radio de colisión del dron (esfera)
 const PICKUP_R = 0.75;     // radio para recolectar un punto
@@ -403,7 +403,16 @@ async function initAudio() {
   await Promise.all([load('loop', 'audio/drone_loop.mp3'), load('start', 'audio/drone_start.mp3'), load('crash', 'audio/crash2.mp3')]);
 }
 // pitchVar = fracción de variación de tono EN VIVO (sonido que REPITE nunca suena idéntico; regla dura Jorge)
-function playOne(name, gain = 1, pitchVar = 0) { if (!AC || !buffers[name] || !sound) return; const s = AC.createBufferSource(); s.buffer = buffers[name]; if (pitchVar) s.playbackRate.value = 1 + (Math.random() * 2 - 1) * pitchVar; const g = AC.createGain(); g.gain.value = gain; s.connect(g).connect(AC.destination); s.start(); return s; }
+const _lastRate = {};
+function playOne(name, gain = 1, pitchVar = 0) {
+  if (!AC || !buffers[name] || !sound) return; const s = AC.createBufferSource(); s.buffer = buffers[name];
+  if (pitchVar) {   // variación SENTIBLE: rango amplio + nunca dos seguidos parecidos (anti-repetición)
+    let r; do { r = 1 + (Math.random() * 2 - 1) * pitchVar; } while (_lastRate[name] != null && Math.abs(r - _lastRate[name]) < pitchVar * 0.5);
+    _lastRate[name] = r; s.playbackRate.value = r;
+    (window.__rates = window.__rates || []).push(+r.toFixed(3));
+  }
+  const g = AC.createGain(); g.gain.value = gain; s.connect(g).connect(AC.destination); s.start(); return s;
+}
 function startLoop() {
   if (!AC || !buffers.loop || loopSrc || !sound) return;
   loopSrc = AC.createBufferSource(); loopSrc.buffer = buffers.loop; loopSrc.loop = true;
@@ -487,7 +496,7 @@ function endLevel(win) {
   } else {
     // NO tapamos la pantalla: se VE el choque — el dron se parte en SUS pedazos reales y la animación sigue.
     const noBattery = phys.battery <= 0;
-    explodeReal(phys.pos); if (drone) drone.visible = false; playOne('crash', 0.9, 0.28);
+    explodeReal(phys.pos); if (drone) drone.visible = false; playOne('crash', 0.9, 0.40);
     showBanner(noBattery ? '🔋 Sin batería' : '💥 ¡Chocaste!', 'Toca para reintentar');
   }
   $('#timer').classList.add('hidden');
@@ -552,7 +561,7 @@ function frame() {
       // El win YA contó (banner/score intactos) → el choque es cosmético, no cambia el resultado.
       if (hitWorld(phys.pos)) {
         _postWinCrashed = true;
-        explodeReal(phys.pos); if (drone) drone.visible = false; playOne('crash', 0.9, 0.28);
+        explodeReal(phys.pos); if (drone) drone.visible = false; playOne('crash', 0.9, 0.40);
       }
     }
 
@@ -767,7 +776,7 @@ $('#playerName').addEventListener('input', e => { playerName = e.target.value.sl
 
 // ---------- hook de pruebas headless ----------
 window.__sim = {
-  THREE, get state() { return state; }, phys, controls, cam, get debris() { return debris; },
+  THREE, get state() { return state; }, phys, controls, cam, get debris() { return debris; }, playOne,
   get house() { return house; }, get drone() { return drone; },
   setLevel(n) { levelIdx = n; buildLevel(n); },
   takeoff: doTakeoff,
