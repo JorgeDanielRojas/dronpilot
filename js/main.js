@@ -3,7 +3,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 
-const VERSION = '0.7.9';   // v= para deploy/guard
+const VERSION = '0.8.0';   // v= para deploy/guard
 const $ = s => document.querySelector(s);
 const DRONE_R = 0.30;      // radio de colisión del dron (esfera)
 const PICKUP_R = 0.75;     // radio para recolectar un punto
@@ -395,7 +395,7 @@ function stopLoop() { if (loopSrc) { try { loopSrc.stop(); } catch (e) {} loopSr
 
 // ---------- flujo de vuelo ----------
 // ---- banner no-bloqueante + capa de toque (sin botones despegar/reintentar) ----
-function showBanner(title, hint) { $('#bTitle').textContent = title || ''; $('#bHint').textContent = hint || ''; $('#bBoard').innerHTML = ''; $('#bBoard').style.display = 'none'; $('#banner').classList.remove('hidden'); }
+function showBanner(title, hint) { /* SIN mensajes en pantalla (Jorge 2026-07-11): el toque sigue reintentando/siguiendo igual */ }
 
 // ---- leaderboard por nivel (patrón Pingüino: score.php + JSON, tiempo ASCENDENTE) ----
 // Web/tests (http/https) → relativo (mismo origen). App nativa (capacitor://) → URL absoluta al server.
@@ -456,7 +456,7 @@ function endLevel(win) {
     // la META también desaparece al tocarla (como los puntos) — con su estallido (Jorge 2026-07-11)
     if (house && house.goal.mesh) { house.goal.mesh.visible = false; popBurst(house.goal.pos.x, house.goal.pos.y, house.goal.pos.z, 0x2ee66e); }
     levelTime = (performance.now() - levelStartT) / 1000;
-    spawnConfetti(); synthWin();
+    synthWin();   // sin confeti (Jorge 2026-07-11)
     // récord PERSONAL por nivel (pedido Jorge): superar tu mejor tiempo local se celebra en el banner
     const best = LS.get('best' + levelIdx, null);
     const isBest = best == null || levelTime < best;
@@ -692,29 +692,7 @@ function buildZones() {
   const W = innerWidth, H = innerHeight, { R1, R2 } = zoneRadii();
   zonesSvg.setAttribute('viewBox', `0 0 ${W} ${H}`);
   zonesSvg.innerHTML = '';
-  // BOTONES familiares (Jorge): 4 círculos con flecha en los centros de las zonas; las ÁREAS clickeables
-  // siguen siendo las zonas diagonales completas (sin borde) — el botón es solo la cara visible.
-  const C = (cx, cy, glyph) => {
-    const c = document.createElementNS(SVGNS, 'circle');
-    c.setAttribute('cx', cx); c.setAttribute('cy', cy); c.setAttribute('r', 36);
-    c.setAttribute('fill', 'none');   // CERO relleno (Jorge): solo contornos
-    c.setAttribute('stroke', '#ffffff'); c.setAttribute('stroke-opacity', '0.22'); c.setAttribute('stroke-width', '1.5');
-    zonesSvg.appendChild(c);
-    // CHEVRON (V sin base) apuntando a la dirección — contorno puro
-    const CH = { l: [[12, -15], [-11, 0], [12, 15]], r: [[-12, -15], [11, 0], [-12, 15]], d: [[-15, -12], [0, 11], [15, -12]], u: [[-15, 12], [0, -11], [15, 12]] };
-    const pl = document.createElementNS(SVGNS, 'polyline');
-    pl.setAttribute('points', CH[glyph].map(p => (cx + p[0]) + ',' + (cy + p[1])).join(' '));
-    pl.setAttribute('fill', 'none'); pl.setAttribute('stroke', '#ffffff'); pl.setAttribute('stroke-width', '2.2');
-    pl.setAttribute('stroke-opacity', '0.42'); pl.setAttribute('stroke-linecap', 'round'); pl.setAttribute('stroke-linejoin', 'round');
-    zonesSvg.appendChild(pl);
-    return c;
-  };
-  const { R1: r1, R2: r2 } = zoneRadii();
-  const di = r1 * 0.47, dm = (r1 + r2) / 2 * Math.SQRT1_2 + 10;   // separados: no se montan (mínimo aire)
-  zonePaths.left = C(di, H - di, 'l');
-  zonePaths.right = C(dm, H - dm, 'r');
-  zonePaths.back = C(W - di, H - di, 'd');
-  zonePaths.accel = C(W - dm, H - dm, 'u');
+  // SIN visuales (Jorge 2026-07-11: "solo función queda"): las zonas táctiles trabajan invisibles
 }
 function zoneOf(px, py) {
   const W = innerWidth, H = innerHeight, { R1, R2 } = zoneRadii();
@@ -726,7 +704,7 @@ const _zonePtrs = new Map();   // pointerId -> zona
 function applyZones() {
   const t = controls._touch; t.left = t.right = t.accel = t.back = false;
   for (const z of _zonePtrs.values()) if (z) t[z] = true;
-  for (const k in zonePaths) { zonePaths[k].setAttribute('stroke-opacity', t[k] ? '0.65' : '0.22'); }   // activo = solo el contorno más marcado
+
 }
 const zonesActive = () => controls.mode === 'touch' && state === 'fly' && !$('#touch').classList.contains('hidden');
 addEventListener('pointerdown', e => {
