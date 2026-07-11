@@ -320,17 +320,14 @@
       goal: { x: 0, y: 1.4, z: -10 },
       points: [{ x: 0, z: 7 }, { x: 0, z: 2 }, { x: 0, z: -3 }],   // las tres crestas
     },
-    { // 23 — EL CARACOL LARGO: espiral que arranca al norte y da casi vuelta y media corta (330°).
-      name: 'El caracol largo', ceiling: 6.2, flightHeight: 1.4,
+    { // 23 — EL CONO CARACOL (rediseñado, era ≈ N15 más fácil): embudo que sube 5.2 m — cada vuelta
+      // MÁS CERRADA (cono) y MÁS ALTA; la cima es una meseta chiquita con la meta.
+      name: 'El cono caracol', ceiling: 7.4, flightHeight: 1.4,
       rects: [{ x: 0, z: 0, w: 13, d: 13 }],
-      terrain: [
-        { type: 'spiral', cx: 0, cz: 0, rIn: 1.5, rOut: 3.6, a0: 270 * Math.PI / 180, a1: 530 * Math.PI / 180, h0: 0, h1: 3.0 },
-        { type: 'plateau', minx: -3.5, maxx: -1.5, minz: -0.3, maxz: 1.3, h: 3.0 },
-      ],
-      column: { x: 0, z: 0, r: 1.45, h: 3.4 },
-      start: { x: 0, z: -5.2 },
-      goal: { x: -2.5, y: 4.4, z: 0.5 },
-      points: [{ x: 1.8, z: -1.8 }, { x: 1.8, z: 1.8 }, { x: -1.27, z: 2.21 }],
+      terrain: [{ type: 'funnel', cx: 0, cz: 0, rMin: 0.9, rMax: 4.6, h: 5.2 }],
+      start: { x: 0, z: 5.6 },
+      goal: { x: 0.3, y: 6.2, z: 0.3 },                 // la CIMA del cono
+      points: [{ x: 0, z: 4.2 }, { x: -2.26, z: -2.26 }, { x: 2.2, z: 0 }],   // espiral: bajo → medio → alto
     },
     { // 24 — LOS DOS PUENTES: dos puentes a distinta altura (1.6 y 2.6), péndulo en el bajo.
       name: 'Los dos puentes', ceiling: 5, flightHeight: 1.3,
@@ -607,6 +604,12 @@
       while (a < f.a0) a += Math.PI * 2;               // desenrollar al rango [a0,a1]
       if (a > f.a1) return 0;
       return f.h0 + (f.h1 - f.h0) * (a - f.a0) / (f.a1 - f.a0);
+    }
+    if (f.type === 'funnel') {   // CONO caracol (Jorge): h sube linealmente del borde (rMax) a la cima (rMin); cima plana
+      const r = Math.hypot(x - f.cx, z - f.cz);
+      if (r >= f.rMax) return 0;
+      if (r <= f.rMin) return f.h;
+      return f.h * (f.rMax - r) / (f.rMax - f.rMin);
     }
     if (f.type === 'ringplat') {
       // PERFIL CAMPANA (rampa de skate, pedido Jorge 2026-07-11): sin meseta plana ni caras verticales —
@@ -1072,6 +1075,18 @@
           const arc = rMid * (f.a1 - f.a0) / n + 0.05;
           const st = box(THREE, w, hTop, arc, i % 2 ? woodA : woodB);
           st.position.set(f.cx + Math.cos(a) * rMid, hTop / 2, f.cz + Math.sin(a) * rMid);
+          st.rotation.y = -a; group.add(st);
+        }
+      } else if (f.type === 'funnel') {
+        const pts = [new THREE.Vector2(0.02, f.h), new THREE.Vector2(f.rMin, f.h), new THREE.Vector2(f.rMax, 0.005)];
+        const cone = new THREE.Mesh(new THREE.LatheGeometry(pts, 64), new THREE.MeshStandardMaterial({ color: 0xd8b487, roughness: 0.9, side: THREE.DoubleSide }));
+        cone.position.set(f.cx, 0, f.cz); group.add(cone);
+        const N = 30, TURNS = 2.2;   // cinta espiral (guía del camino) pegada a la superficie del cono
+        for (let i = 0; i < N; i++) {
+          const t = (i + 0.5) / N, r = f.rMax - (f.rMax - f.rMin) * t, a = t * TURNS * Math.PI * 2 + Math.PI / 2;
+          const hY = f.h * (f.rMax - r) / (f.rMax - f.rMin);
+          const st = box(THREE, 0.75, 0.07, r * TURNS * Math.PI * 2 / N + 0.08, i % 2 ? 0xc9a06a : 0xe0cba8);
+          st.position.set(f.cx + Math.cos(a) * r, hY + 0.035, f.cz + Math.sin(a) * r);
           st.rotation.y = -a; group.add(st);
         }
       } else if (f.type === 'ringplat') {
