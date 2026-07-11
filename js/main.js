@@ -3,7 +3,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 
-const VERSION = '0.9.1';   // v= para deploy/guard
+const VERSION = '0.9.2';   // v= para deploy/guard
 const $ = s => document.querySelector(s);
 const DRONE_R = 0.30;      // radio de colisión del dron (esfera)
 const PICKUP_R = 0.75;     // radio para recolectar un punto
@@ -411,6 +411,30 @@ async function initAudio() {
   const load = async (name, url) => { try { const r = await fetch(url); const a = await r.arrayBuffer(); buffers[name] = await AC.decodeAudioData(a); } catch (e) {} };
   await Promise.all([load('loop', 'audio/drone_loop.mp3'), load('start', 'audio/drone_start.mp3'), load('crash', 'audio/crash2.mp3'),
     load('pop', 'audio/balloon_pop.mp3'), load('deadwin', 'audio/arcade_win.mp3')]);   // Pixabay, elegidos por Jorge 2026-07-11 (globo 3 + arcade 1)
+  if (buffers.loop) buffers.loop = makeSeamless(buffers.loop, 0.12);   // loop INFINITO sin corte (Jorge 2026-07-11)
+}
+// El mp3 trae silencio de encoder en los bordes → en loop se OYE el corte en cada vuelta (hover).
+// Fix una sola vez al cargar: recortar los bordes casi-silencio y hornear un CROSSFADE cola→cabeza
+// (potencia constante) → el buffer resultante loopea continuo. Lo usan el loop de vuelo y el ventilador.
+function makeSeamless(buf, xfSec) {
+  const sr = buf.sampleRate, ch = buf.numberOfChannels, TH = 0.003;
+  let s = 0, e = buf.length - 1;
+  const d0 = buf.getChannelData(0);
+  while (s < e && Math.abs(d0[s]) < TH) s++;
+  while (e > s && Math.abs(d0[e]) < TH) e--;
+  const len = e - s + 1, xf = Math.min(Math.round(xfSec * sr), Math.floor(len / 4));
+  const outLen = len - xf;
+  if (outLen < sr * 0.2) return buf;                 // demasiado corto tras recortar: dejarlo como está
+  const out = AC.createBuffer(ch, outLen, sr);
+  for (let c = 0; c < ch; c++) {
+    const src = buf.getChannelData(c), dst = out.getChannelData(c);
+    for (let i = 0; i < outLen; i++) dst[i] = src[s + i];
+    for (let i = 0; i < xf; i++) {                   // cabeza = cabeza·sin + cola·cos (equal-power)
+      const a = (i / xf) * Math.PI / 2;
+      dst[i] = src[s + i] * Math.sin(a) + src[s + outLen + i] * Math.cos(a);
+    }
+  }
+  return out;
 }
 // pitchVar = fracción de variación de tono EN VIVO (sonido que REPITE nunca suena idéntico; regla dura Jorge)
 const _lastRate = {};
@@ -684,13 +708,12 @@ const _wallRay = new THREE.Raycaster();
 const _wv1 = new THREE.Vector3(), _wv2 = new THREE.Vector3();
 function updateWallTransparency(dt) {
   if (!house || !drone) return;
-  // Al chocar/ganar NO desvanecer: la pared contra la que chocamos debe verse EN PIE (pedido Jorge).
-  if (state === 'lose' || state === 'win') {
-    for (const w of house.walls) { const m = w.material; if (m.opacity < 1) { m.opacity = 1; if (m.transparent) { m.transparent = false; m.needsUpdate = true; } m.depthWrite = true; } }
-    return;
-  }
+  // También en 'lose'/'win': el zoom-out del choque puede dejar muros ENTRE cámara y despiece →
+  // se desvanecen igual que en vuelo "para poder ver" (Jorge 2026-07-11; reemplaza la regla vieja
+  // de congelar todo en pie — solo se apaga el muro que TAPA, el del choque sigue visible).
+  const tgt = (_heroPiece && state === 'win') ? _heroPiece.mesh.position : phys.pos;   // en gol de muerto la cámara sigue a la PIEZA
   const cx = cam.position.x, cz = cam.position.z;
-  const to = _wv1.set(phys.pos.x, phys.pos.y + 0.1, phys.pos.z);
+  const to = _wv1.set(tgt.x, tgt.y + 0.1, tgt.z);
   const dir = _wv2.subVectors(to, cam.position);
   const dist = dir.length();
   let blockers = null;
@@ -700,6 +723,9 @@ function updateWallTransparency(dt) {
     const hits = _wallRay.intersectObjects(house.walls, false);
     if (hits.length) blockers = new Set(hits.map(h => h.object));
   }
+  // dos muros pueden COMPARTIR material → decidir por MATERIAL (si cualquiera bloquea, se desvanece);
+  // si no, un muro pide 0.06 y el otro 1 sobre el mismo material y queda oscilando a medias (caso lv10).
+  const matBlock = new Map();
   for (const w of house.walls) {
     let block = blockers ? blockers.has(w) : false;
     if (!block) {   // muro PEGADO a la cámara (la cámara quedó dentro/detrás → el ray no lo detecta)
@@ -708,8 +734,15 @@ function updateWallTransparency(dt) {
       const dz = Math.max(0, Math.abs(cz - w.position.z) - p.depth / 2);
       if (dx * dx + dz * dz < 0.45 * 0.45) block = true;
     }
-    const target = block ? 0.06 : 1;
-    const m = w.material;
+    matBlock.set(w.material, (matBlock.get(w.material) || false) || block);
+  }
+  for (const [m, block] of matBlock) {
+    // HISTÉRESIS anti-flicker: el ray puede rozar el borde del muro y alternar por frame → el lerp
+    // queda a medias (~0.5, "muro fantasma"). Bloqueado se queda 0.35 s tras el último bloqueo.
+    const ud = m.userData;
+    ud._bt = block ? 0 : (ud._bt == null ? 99 : ud._bt + dt);
+    const eff = ud._bt < 0.35;
+    const target = eff ? 0.06 : 1;
     let next = m.opacity + (target - m.opacity) * Math.min(1, 22 * dt);
     if (block && next > 0.85) next = 0.7;                               // empieza a esconderse rápido
     const wantTransp = next < 0.98;
@@ -823,7 +856,7 @@ $('#playerName').addEventListener('input', e => { playerName = e.target.value.sl
 
 // ---------- hook de pruebas headless ----------
 window.__sim = {
-  THREE, get state() { return state; }, phys, controls, cam, get debris() { return debris; }, playOne,
+  THREE, get state() { return state; }, phys, controls, cam, get debris() { return debris; }, playOne, get buffers() { return buffers; },
   get house() { return house; }, get drone() { return drone; },
   setLevel(n) { levelIdx = n; buildLevel(n); },
   takeoff: doTakeoff,
