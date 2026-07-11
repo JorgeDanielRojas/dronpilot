@@ -3,7 +3,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 
-const VERSION = '0.8.2';   // v= para deploy/guard
+const VERSION = '0.8.3';   // v= para deploy/guard
 const $ = s => document.querySelector(s);
 const DRONE_R = 0.30;      // radio de colisión del dron (esfera)
 const PICKUP_R = 0.75;     // radio para recolectar un punto
@@ -36,13 +36,18 @@ const fill = new THREE.DirectionalLight(0xdde8ff, 0.6);   // relleno frío: ilum
 fill.position.set(-6, 7, -4); scene.add(fill);
 
 function resize() {
-  const w = innerWidth, h = innerHeight;
+  // PWA standalone iOS: innerHeight miente al lanzar/rotar (franja abajo) → visualViewport manda
+  const vv = window.visualViewport;
+  const w = Math.round((vv && vv.width) || innerWidth), h = Math.round((vv && vv.height) || innerHeight);
   renderer.setSize(w, h, false);
   cam.aspect = w / h; cam.updateProjectionMatrix();
   const wantRot = h > w && w < 820;
   $('#rotate').classList.toggle('want', wantRot);
 }
-addEventListener('resize', resize); resize();
+addEventListener('resize', resize);
+if (window.visualViewport) visualViewport.addEventListener('resize', resize);
+addEventListener('orientationchange', () => { resize(); setTimeout(resize, 350); setTimeout(resize, 900); });   // iOS reporta tarde
+setTimeout(resize, 400); resize();
 
 // ---------- estado ----------
 const phys = new window.DronePhysics();
