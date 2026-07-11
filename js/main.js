@@ -3,7 +3,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 
-const VERSION = '0.8.0';   // v= para deploy/guard
+const VERSION = '0.8.1';   // v= para deploy/guard
 const $ = s => document.querySelector(s);
 const DRONE_R = 0.30;      // radio de colisión del dron (esfera)
 const PICKUP_R = 0.75;     // radio para recolectar un punto
@@ -399,7 +399,10 @@ function showBanner(title, hint) { /* SIN mensajes en pantalla (Jorge 2026-07-11
 
 // ---- leaderboard por nivel (patrón Pingüino: score.php + JSON, tiempo ASCENDENTE) ----
 // Web/tests (http/https) → relativo (mismo origen). App nativa (capacitor://) → URL absoluta al server.
-const SCORE_URL = location.protocol.indexOf('http') === 0 ? 'score.php' : 'https://tuescuelavirtual.com/dronpilot/score.php';
+// leaderboard vive en el hosting LEGACY (2026-07-11: el dominio principal migró al sitio nuevo y dejó
+// legacy.tuescuelavirtual.com → hosting viejo). Relativo solo en localhost (tests) o en el propio legacy.
+const SCORE_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname === 'legacy.tuescuelavirtual.com')
+  ? 'score.php' : 'https://legacy.tuescuelavirtual.com/dronpilot/score.php';
 async function submitScore(level, time) {
   const name = (playerName || 'Piloto');
   let list = [];
