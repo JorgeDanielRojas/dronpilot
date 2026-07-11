@@ -138,8 +138,13 @@ class DronePhysics {
       const bob = this.state === 'flying'
         ? Math.sin(this.t0 * 2 * Math.PI * T.bobHz) * T.bobAmp : 0;
       const err = (targetY + bob) - this.pos.y;
-      const ay = err * T.riseSpring - this.vel.y * T.riseDamp;
+      // SUBIDA TURBO (Jorge 2026-07-11): escalón delante → el empuje crece con el DESNIVEL y con tu
+      // velocidad (llegas rápido = sube rápido, no chocas el escalón). BAJADA: al contrario, PLANEA.
+      let spring = T.riseSpring;
+      if (err > 0.25 && this.state === 'flying') spring *= 1 + Math.min(2.4, err * 1.6) + Math.abs(this.speed) * 0.22;
+      const ay = err * spring - this.vel.y * T.riseDamp;
       this.vel.y += ay * dt;
+      if (err < -0.3 && this.state === 'flying') this.vel.y = Math.max(this.vel.y, -1.7);   // descenso suave (planeo)
       this.pos.y += this.vel.y * dt;
 
       // transición despegue → flying cuando se asienta cerca de la altura media

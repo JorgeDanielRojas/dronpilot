@@ -3,7 +3,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 
-const VERSION = '0.8.4';   // v= para deploy/guard
+const VERSION = '0.8.5';   // v= para deploy/guard
 const $ = s => document.querySelector(s);
 const DRONE_R = 0.30;      // radio de colisión del dron (esfera)
 const PICKUP_R = 0.75;     // radio para recolectar un punto
@@ -334,6 +334,19 @@ function stepDebris(dt) {
     if (debrisHit(p.x, p.y, nz, R)) { d.v.z *= -REST; d.w.x *= -0.7; } else p.z = nz;
     if (p.y < 0.03) { p.y = 0.03; d.v.y *= -0.35; d.v.x *= 0.6; d.v.z *= 0.6; }   // piso
     d.mesh.rotation.x += d.w.x * dt; d.mesh.rotation.y += d.w.y * dt;
+    // ⭐ GOL DE MUERTO (Jorge 2026-07-11): si una PIEZA del despiece toca la meta (ya desbloqueada)
+    // después de chocar → el nivel VALE, con logro especial (único mensaje que existe en el juego).
+    if (state === 'lose' && house && !house._deadWin && pointsLeft() === 0) {
+      const g = house.goal.pos, gx = p.x - g.x, gy = p.y - g.y, gz = p.z - g.z;
+      if (gx * gx + gy * gy + gz * gz < 0.75 * 0.75) {
+        house._deadWin = true; state = 'win';
+        house.goal.mesh.visible = false; popBurst(g.x, g.y, g.z, 0xffd23f);
+        synthWin();
+        const bn = $('#banner'); $('#bTitle').textContent = '☠️🏁 ¡GOL DE MUERTO!'; $('#bHint').textContent = 'La pieza llegó por ti · Toca para seguir'; $('#bBoard').innerHTML = ''; bn.classList.remove('hidden');
+        LS.set('ach_deadgoal', true);
+        setTapLayer();
+      }
+    }
     if (d.life > 2.4) { scene.remove(d.mesh); disposeMesh(d.mesh); debris.splice(i, 1); }
   }
 }
