@@ -3,7 +3,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 
-const VERSION = '0.11.0';   // v= para deploy/guard
+const VERSION = '0.11.1';   // v= para deploy/guard
 const $ = s => document.querySelector(s);
 const DRONE_R = 0.30;      // radio de colisión del dron (esfera)
 const PICKUP_R = 0.75;     // radio para recolectar un punto
@@ -163,6 +163,11 @@ function loadCraft(kind) {
         (Array.isArray(o.material) ? o.material : [o.material]).forEach(mt => { mt.roughness = 1; mt.metalness = 0; mt.needsUpdate = true; });
       });
       const bb = new THREE.Box3().setFromObject(m); const bs = new THREE.Vector3(); bb.getSize(bs);
+      // CABEZA CAÍDA (Jorge: "rígida"): el oso trae esqueleto — doblar el cuello y la cabeza hacia adelante
+      m.traverse(o => {
+        if (/^neck_/.test(o.name)) o.rotation.x += 0.22;
+        if (/^head_/.test(o.name)) o.rotation.x += 0.30;
+      });
       loader.load('models/drone.glb', (g2) => {
         if (gen !== loadGen) return;                 // NO disponer g2: el clone comparte geometría/materiales
         let prop = null; g2.scene.traverse(o => { if (!prop && /propeller_1_object$/i.test(o.name)) prop = o; });
@@ -172,10 +177,16 @@ function loadCraft(kind) {
         const pb = new THREE.Box3().setFromObject(pc); const ps = new THREE.Vector3(); pb.getSize(ps);
         const targetD = bs.x * 0.85;                 // diámetro ≈ ancho de hombros
         rotor.scale.setScalar(targetD / (Math.max(ps.x, ps.z) || 1));
-        // mástil corto para que se LEA que va montada en la espalda
-        const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.016, 0.11, 8), new THREE.MeshStandardMaterial({ color: 0x555b64, metalness: 0.4 }));
-        mast.position.y = -0.055 / rotor.scale.x; mast.scale.setScalar(1 / rotor.scale.x); rotor.add(mast);
-        rotor.position.set(0, bs.y * 0.20, bs.z * 0.30);   // CERVICAL/espalda alta, montada hacia atrás (Jorge)
+        // hub AFUERA del cuerpo (detrás de la espalda, no clavado en el cuello — Jorge) + mástil que
+        // sale de la espalda hasta el hub (se LEE el montaje)
+        const hub = new THREE.Vector3(0, bs.y * 0.14, bs.z * 0.62);
+        rotor.position.copy(hub);
+        const anchor = new THREE.Vector3(0, bs.y * 0.02, bs.z * 0.40);
+        const dirM = hub.clone().sub(anchor), lenM = dirM.length();
+        const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.016, lenM, 8), new THREE.MeshStandardMaterial({ color: 0x555b64, metalness: 0.4 }));
+        mast.position.copy(anchor.clone().add(hub).multiplyScalar(0.5));
+        mast.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dirM.normalize());
+        tiltPivot.add(mast);
         tiltPivot.add(rotor);
         rotor.userData.spinDir = 1; rotor.userData.spinAxis = new THREE.Vector3(0, 1, 0);
         rotors.push(rotor);
@@ -186,9 +197,12 @@ function loadCraft(kind) {
     if (kind === 'fly') {
       const wingNodes = [];
       m.traverse(o => { if (/^wing[LR]$/.test(o.name)) wingNodes.push(o); });
+      const ROOT_Y = 1.58;   // altura de la RAÍZ del ala en coords del modelo (medida: cuerpo y≈1.0-2.3, raíz 1.54-1.62)
       for (const wn of wingNodes) {
         const parent = wn.parent;
-        const piv = new THREE.Group(); parent.add(piv); piv.add(wn);
+        const piv = new THREE.Group(); parent.add(piv);
+        piv.position.set(0, ROOT_Y, 0); wn.position.set(0, -ROOT_Y, 0);   // la bisagra pasa POR la raíz, no bajo el cuerpo
+        piv.add(wn);
         piv.updateMatrixWorld(true);
         const pq = new THREE.Quaternion(); piv.getWorldQuaternion(pq);
         piv.userData.axis = new THREE.Vector3(0, 0, 1).applyQuaternion(pq.invert()).normalize();   // eje del cuerpo en frame local
