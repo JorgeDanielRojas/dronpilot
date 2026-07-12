@@ -3,7 +3,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 
-const VERSION = '0.9.3';   // v= para deploy/guard
+const VERSION = '0.10.0';   // v= para deploy/guard
 const $ = s => document.querySelector(s);
 const DRONE_R = 0.30;      // radio de colisión del dron (esfera)
 const PICKUP_R = 0.75;     // radio para recolectar un punto
@@ -518,7 +518,7 @@ function onTap() {
   if (performance.now() < _tapArm) return;
   if (state === 'ready') doTakeoff();
   else if (state === 'lose') { if (drone) drone.visible = true; buildLevel(levelIdx); }
-  else if (state === 'win') { if (drone) drone.visible = true; levelIdx = levelIdx >= 39 ? levelIdx : levelIdx + 1; LS.set('unlocked', Math.max(LS.get('unlocked', 0), levelIdx)); buildLevel(levelIdx); }
+  else if (state === 'win') { if (drone) drone.visible = true; levelIdx = levelIdx >= 49 ? levelIdx : levelIdx + 1; LS.set('unlocked', Math.max(LS.get('unlocked', 0), levelIdx)); buildLevel(levelIdx); }
 }
 
 function doTakeoff() {
@@ -548,7 +548,7 @@ function endLevel(win) {
     const best = LS.get('best' + levelIdx, null);
     const isBest = best == null || levelTime < best;
     if (isBest) LS.set('best' + levelIdx, +levelTime.toFixed(2));
-    showBanner((isBest && best != null ? '🏆 ¡NUEVO MEJOR TIEMPO! · ' : '🎉 ¡Llegaste! · ') + levelTime.toFixed(1) + 's', levelIdx >= 39 ? 'Toca para repetir' : 'Toca para seguir');
+    showBanner((isBest && best != null ? '🏆 ¡NUEVO MEJOR TIEMPO! · ' : '🎉 ¡Llegaste! · ') + levelTime.toFixed(1) + 's', levelIdx >= 49 ? 'Toca para repetir' : 'Toca para seguir');
     submitScore(levelIdx, levelTime);                                          // envía el tiempo + muestra el leaderboard del nivel
   } else {
     // NO tapamos la pantalla: se VE el choque — el dron se parte en SUS pedazos reales y la animación sigue.

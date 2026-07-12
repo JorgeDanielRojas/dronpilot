@@ -176,9 +176,9 @@
       goal: { x: -1.92, y: 1.5, z: 3.12 },              // φ=118°, tras la vuelta COMPLETA (los barrotes cierran el atajo)
       points: [{ x: 2.35, z: 2.86 }, { x: 4.1, z: -0.5 }, { x: 0, z: -4.6 }, { x: -4.1, z: -0.5 }],   // el 1º (φ55°) es CEBO apenas entras → te jala a girar; luego este → norte → oeste
     },
-    { // 13 — LA HERRADURA: media curva (no vuelta completa): entras por el sur, sales por el hueco ESTE.
+    { // 13 — LA CURVA: media curva hacia la IZQUIERDA (renombrada; 'La herradura' ya existía en el 5): entras por el sur, sales por el hueco ESTE.
       // Desarrolla la curva de La pista; barrotes cierran el atajo corto → recorres la herradura larga.
-      name: 'La herradura', ceiling: 3.2, flightHeight: 1.4,
+      name: 'La curva', ceiling: 3.2, flightHeight: 1.4,
       rects: [{ x: 0, z: 0.5, w: 13, d: 13 }],
       ring: {
         cx: 0, cz: -0.5, rIn: 2.6, rOut: 4.6, h: 1.8,
@@ -190,7 +190,21 @@
       goal: { x: 5.6, y: 1.5, z: -0.5 },               // afuera del hueco este, tras la herradura
       points: [{ x: -3.12, z: 1.3 }, { x: -3.12, z: -2.3 }, { x: 1.8, z: -3.62 }],   // oeste → suroeste → sureste
     },
-    { // 14 — EL ALTILLO: primera ESCALERA LARGA a un piso 1 real (H=2.2). La meta se esconde a la IZQUIERDA
+    { // 14 — LA CONTRACURVA: la misma media curva… pero hacia el OTRO lado (pedido Jorge: curva para un
+      // lado, curva para el otro). Sales por el hueco OESTE; los barrotes cierran el atajo zurdo.
+      name: 'La contracurva', ceiling: 3.2, flightHeight: 1.4,
+      rects: [{ x: 0, z: 0.5, w: 13, d: 13 }],
+      ring: {
+        cx: 0, cz: -0.5, rIn: 2.6, rOut: 4.6, h: 1.8,
+        gaps: [[78 * Math.PI / 180, 102 * Math.PI / 180], [166 * Math.PI / 180, 194 * Math.PI / 180]],
+        chute: { x: 1.18, t: 0.2, z0: 3.9, z1: 5.9 },
+        posts: [{ x: -2.12, z: 1.62 }, { x: -2.55, z: 2.05 }, { x: -2.97, z: 2.47 }],   // φ135: el atajo por la izquierda está cerrado
+      },
+      start: { x: 0, z: 5.2 },
+      goal: { x: -5.6, y: 1.5, z: -0.5 },
+      points: [{ x: 3.12, z: 1.3 }, { x: 3.12, z: -2.3 }, { x: -1.8, z: -3.62 }],   // este → sureste → suroeste
+    },
+    { // 15 — EL ALTILLO: primera ESCALERA LARGA a un piso 1 real (H=2.2). La meta se esconde a la IZQUIERDA
       // arriba (el impulso es seguir derecho). Desarrolla la escalera del 11 con más altura.
       name: 'El altillo', ceiling: 4.6, flightHeight: 1.4,
       rects: [{ x: 0, z: 6, w: 10, d: 6 }, { x: 0, z: 0, w: 3, d: 6 }, { x: 0, z: -5.5, w: 10, d: 5 }],
@@ -203,20 +217,6 @@
       points: [{ x: 2, z: 7 }, { x: 0, z: 0 }, { x: 3.5, z: -6.5 }],   // el último (derecha) es cebo; la meta está a la IZQUIERDA
       obstacles: [{ type: 'sofa', x: 2.2, z: 4.5 }],
       traps: [{ x: -2, z: 6.5, r: 0.9, type: 'balloon' }],
-    },
-    { // 15 — EL CARACOL: escalera de CARACOL (curva + subir a la vez): rampa espiral alrededor de una
-      // columna central, 260° subiendo 0→3.2, aterrizaje arriba. Lo nuevo del dominio: curva inclinada.
-      name: 'El caracol', ceiling: 6.2, flightHeight: 1.4,
-      rects: [{ x: 0, z: 0, w: 13, d: 13 }],
-      terrain: [
-        { type: 'spiral', cx: 0, cz: 0, rIn: 1.6, rOut: 3.8, a0: 90 * Math.PI / 180, a1: 350 * Math.PI / 180, h0: 0, h1: 3.2 },
-        { type: 'plateau', minx: 1.6, maxx: 3.9, minz: -1.8, maxz: -0.2, h: 3.2 },   // rellano de llegada
-      ],
-      column: { x: 0, z: 0, r: 1.55, h: 3.6 },          // columna central (colisión cyl exacta)
-      start: { x: 0, z: 5.2 },
-      goal: { x: -4.5, y: 1.4, z: -4.5 },               // ABAJO en el piso: coronas el caracol y te LANZAS desde arriba (Jorge)
-      points: [{ x: -2.61, z: 0.7 }, { x: -0.7, z: -2.61 }, { x: 2.34, z: -1.35 }],  // marcan la espiral (φ165·255·330; el último arriba)
-      obstacles: [{ type: 'teddy', x: -4.8, z: 4.8 }],
     },
     { // 16 — EL PUENTE: sube, cruza un puente con PÉNDULO, baja al otro lado. Desarrolla subir Y bajar.
       name: 'El puente', ceiling: 4.2, flightHeight: 1.3,
@@ -232,24 +232,17 @@
       obstacles: [{ type: 'blocks', x: -6, z: -0.5 }, { type: 'lamp', x: 6, z: 0.5 }],
       movers: [{ type: 'pendulum', x: 0, z: 0, y: 1.6, len: 1.0, axis: 'z', swing: 0.55, speed: 1.4, baseY: 2 }],
     },
-    { // 17 — LA TORRE: pisos 0→4 EN UNA MISMA DIRECCIÓN (pedido Jorge): 4 escaleras seguidas hacia el
-      // norte, cada una sube un piso entero (1.9). La meta arriba del todo, escondida a la izquierda.
-      name: 'La torre', ceiling: 10, flightHeight: 1.4,
-      rects: [{ x: 0, z: 0, w: 6, d: 26 }],
+    { // 17 — LA OLA: pura rampa de skate — tres olas seguidas, el vuelo sube y baja con el terreno.
+      name: 'La ola', ceiling: 5.4, flightHeight: 1.4,
+      rects: [{ x: 0, z: 0, w: 6, d: 24 }],
       terrain: [
-        { type: 'rampz', minx: -3, maxx: 3, z0: 9, z1: 7, h0: 0, h1: 1.9 },
-        { type: 'plateau', minx: -3, maxx: 3, minz: 5, maxz: 7, h: 1.9 },
-        { type: 'rampz', minx: -3, maxx: 3, z0: 5, z1: 3, h0: 1.9, h1: 3.8 },
-        { type: 'plateau', minx: -3, maxx: 3, minz: 1, maxz: 3, h: 3.8 },
-        { type: 'rampz', minx: -3, maxx: 3, z0: 1, z1: -1, h0: 3.8, h1: 5.7 },
-        { type: 'plateau', minx: -3, maxx: 3, minz: -3, maxz: -1, h: 5.7 },
-        { type: 'rampz', minx: -3, maxx: 3, z0: -3, z1: -5, h0: 5.7, h1: 7.6 },
-        { type: 'plateau', minx: -3, maxx: 3, minz: -13, maxz: -5, h: 7.6 },
+        { type: 'rampz', minx: -3, maxx: 3, z0: 9, z1: 7, h0: 0, h1: 1.5 }, { type: 'rampz', minx: -3, maxx: 3, z0: 7, z1: 5, h0: 1.5, h1: 0 },
+        { type: 'rampz', minx: -3, maxx: 3, z0: 4, z1: 2, h0: 0, h1: 2.1 }, { type: 'rampz', minx: -3, maxx: 3, z0: 2, z1: 0, h0: 2.1, h1: 0 },
+        { type: 'rampz', minx: -3, maxx: 3, z0: -1, z1: -3, h0: 0, h1: 2.7 }, { type: 'rampz', minx: -3, maxx: 3, z0: -3, z1: -5, h0: 2.7, h1: 0 },
       ],
-      start: { x: 0, z: 11.5 },
-      goal: { x: -1.8, y: 8.7, z: -11 },
-      points: [{ x: 1.6, z: 6 }, { x: -1.6, z: 2 }, { x: 1.6, z: -2 }, { x: 0, z: -7.5 }],  // zigzag por los rellanos
-      traps: [{ x: 0, z: 10, r: 0.9, type: 'balloon' }],
+      start: { x: 0, z: 11 },
+      goal: { x: 0, y: 1.4, z: -10 },
+      points: [{ x: 0, z: 7 }, { x: 0, z: 2 }, { x: 0, z: -3 }],   // las tres crestas
     },
     { // 18 — LA DONA: pista circular ELEVADA (curva + piso a la vez): dona con faldas-rampa; cruzar por el
       // centro te hunde (el vuelo sigue el terreno) → conviene rodear por arriba. Sin muros: todo visible.
@@ -261,19 +254,19 @@
       points: [{ x: 2.18, z: 3.11 }, { x: -3.8, z: 0 }, { x: 0, z: -3.8 }],   // cebo φ55 → oeste → norte
       obstacles: [{ type: 'teddy', x: -5.3, z: 5.3 }],
     },
-    { // 19 — LA MONTAÑA RUSA (rehecho, el "mirador" era tonto — Jorge): tres olas de skate cada vez más
-      // altas, y en los VALLES una lámpara al centro = slalom (esquivas mientras el vuelo sube y baja).
-      name: 'La montaña rusa', ceiling: 5.6, flightHeight: 1.4,
-      rects: [{ x: 0, z: 0, w: 8, d: 24 }],
+    { // 19 — EL CARACOL: escalera de CARACOL (curva + subir a la vez): rampa espiral alrededor de una
+      // columna central, 260° subiendo 0→3.2, aterrizaje arriba. Lo nuevo del dominio: curva inclinada.
+      name: 'El caracol', ceiling: 6.2, flightHeight: 1.4,
+      rects: [{ x: 0, z: 0, w: 13, d: 13 }],
       terrain: [
-        { type: 'rampz', minx: -4, maxx: 4, z0: 9, z1: 7, h0: 0, h1: 1.8 }, { type: 'rampz', minx: -4, maxx: 4, z0: 7, z1: 5, h0: 1.8, h1: 0 },
-        { type: 'rampz', minx: -4, maxx: 4, z0: 4, z1: 2, h0: 0, h1: 2.4 }, { type: 'rampz', minx: -4, maxx: 4, z0: 2, z1: 0, h0: 2.4, h1: 0 },
-        { type: 'rampz', minx: -4, maxx: 4, z0: -1, z1: -3, h0: 0, h1: 2.0 }, { type: 'rampz', minx: -4, maxx: 4, z0: -3, z1: -5, h0: 2.0, h1: 0 },
+        { type: 'spiral', cx: 0, cz: 0, rIn: 1.6, rOut: 3.8, a0: 90 * Math.PI / 180, a1: 350 * Math.PI / 180, h0: 0, h1: 3.2 },
+        { type: 'plateau', minx: 1.6, maxx: 3.9, minz: -1.8, maxz: -0.2, h: 3.2 },   // rellano de llegada
       ],
-      start: { x: 0, z: 10.5 },
-      goal: { x: 0, y: 1.4, z: -9.5 },
-      points: [{ x: 0, z: 7 }, { x: 0, z: 2 }, { x: 0, z: -3 }],   // las tres crestas
-      obstacles: [{ type: 'lamp', x: 0, z: 4.5 }, { type: 'lamp', x: 0, z: -0.5 }],   // slalom en los valles
+      column: { x: 0, z: 0, r: 1.55, h: 3.6 },          // columna central (colisión cyl exacta)
+      start: { x: 0, z: 5.2 },
+      goal: { x: -4.5, y: 1.4, z: -4.5 },               // ABAJO en el piso: coronas el caracol y te LANZAS desde arriba (Jorge)
+      points: [{ x: -2.61, z: 0.7 }, { x: -0.7, z: -2.61 }, { x: 2.34, z: -1.35 }],  // marcan la espiral (φ165·255·330; el último arriba)
+      obstacles: [{ type: 'teddy', x: -4.8, z: 4.8 }],
     },
     { // 20 — LA GRAN VUELTA (final): todo junto — chute con ventilador, vuelta a la pista (barrotes),
       // salida por el hueco este, escalera larga junto al muro este a una meseta con péndulo, meta al fondo.
@@ -308,28 +301,22 @@
       goal: { x: 3.4, y: 3.6, z: 1.6 },
       points: [{ x: -3.4, z: 1.6 }, { x: 0, z: -2 }, { x: 3.4, z: -1.6 }],
     },
-    { // 22 — LA OLA: pura rampa de skate — tres olas seguidas, el vuelo sube y baja con el terreno.
-      name: 'La ola', ceiling: 5.4, flightHeight: 1.4,
-      rects: [{ x: 0, z: 0, w: 6, d: 24 }],
+    { // 22 — LA MONTAÑA RUSA: CUATRO olas cada vez MÁS ALTAS (1.2→3.0) en corredor ancho, con lámpara-slalom
+      // en cada valle: esquivas en pleno sube-y-baja. Hermana mayor de "La ola" (antes eran casi clones).
+      name: 'La montaña rusa', ceiling: 6.2, flightHeight: 1.4,
+      rects: [{ x: 0, z: 0, w: 10, d: 30 }],
       terrain: [
-        { type: 'rampz', minx: -3, maxx: 3, z0: 9, z1: 7, h0: 0, h1: 1.5 }, { type: 'rampz', minx: -3, maxx: 3, z0: 7, z1: 5, h0: 1.5, h1: 0 },
-        { type: 'rampz', minx: -3, maxx: 3, z0: 4, z1: 2, h0: 0, h1: 2.1 }, { type: 'rampz', minx: -3, maxx: 3, z0: 2, z1: 0, h0: 2.1, h1: 0 },
-        { type: 'rampz', minx: -3, maxx: 3, z0: -1, z1: -3, h0: 0, h1: 2.7 }, { type: 'rampz', minx: -3, maxx: 3, z0: -3, z1: -5, h0: 2.7, h1: 0 },
+        { type: 'rampz', minx: -5, maxx: 5, z0: 11, z1: 9, h0: 0, h1: 1.2 }, { type: 'rampz', minx: -5, maxx: 5, z0: 9, z1: 7, h0: 1.2, h1: 0 },
+        { type: 'rampz', minx: -5, maxx: 5, z0: 6, z1: 4, h0: 0, h1: 1.8 }, { type: 'rampz', minx: -5, maxx: 5, z0: 4, z1: 2, h0: 1.8, h1: 0 },
+        { type: 'rampz', minx: -5, maxx: 5, z0: 1, z1: -1, h0: 0, h1: 2.4 }, { type: 'rampz', minx: -5, maxx: 5, z0: -1, z1: -3, h0: 2.4, h1: 0 },
+        { type: 'rampz', minx: -5, maxx: 5, z0: -4, z1: -6, h0: 0, h1: 3.0 }, { type: 'rampz', minx: -5, maxx: 5, z0: -6, z1: -8, h0: 3.0, h1: 0 },
       ],
-      start: { x: 0, z: 11 },
-      goal: { x: 0, y: 1.4, z: -10 },
-      points: [{ x: 0, z: 7 }, { x: 0, z: 2 }, { x: 0, z: -3 }],   // las tres crestas
+      start: { x: 0, z: 13 },
+      goal: { x: 0, y: 1.4, z: -12.5 },
+      points: [{ x: 0, z: 9 }, { x: 0, z: 4 }, { x: 0, z: -1 }, { x: 0, z: -6 }],   // las cuatro crestas
+      obstacles: [{ type: 'lamp', x: -2, z: 7.7 }, { type: 'lamp', x: 2, z: 1.5 }, { type: 'lamp', x: -2, z: -3.5 }],
     },
-    { // 23 — EL CONO CARACOL (rediseñado, era ≈ N15 más fácil): embudo que sube 5.2 m — cada vuelta
-      // MÁS CERRADA (cono) y MÁS ALTA; la cima es una meseta chiquita con la meta.
-      name: 'El cono caracol', ceiling: 7.4, flightHeight: 1.4,
-      rects: [{ x: 0, z: 0, w: 13, d: 13 }],
-      terrain: [{ type: 'funnel', cx: 0, cz: 0, rMin: 0.9, rMax: 4.6, h: 5.2 }],
-      start: { x: 0, z: 5.6 },
-      goal: { x: 0.3, y: 6.2, z: 0.3 },                 // la CIMA del cono
-      points: [{ x: 0, z: 4.2 }, { x: -2.26, z: -2.26 }, { x: 2.2, z: 0 }],   // espiral: bajo → medio → alto
-    },
-    { // 24 — LOS DOS PUENTES: dos puentes a distinta altura (1.6 y 2.6), péndulo en el bajo.
+    { // 23 — LOS DOS PUENTES: dos puentes a distinta altura (1.6 y 2.6), péndulo en el bajo.
       name: 'Los dos puentes', ceiling: 5, flightHeight: 1.3,
       rects: [{ x: -5.5, z: 0, w: 3, d: 12 }, { x: 0, z: -3, w: 8, d: 3 }, { x: 0, z: 3, w: 8, d: 3 }, { x: 5.5, z: 0, w: 3, d: 12 }],
       terrain: [
@@ -345,7 +332,35 @@
       points: [{ x: -5.5, z: -5 }, { x: 0, z: -3 }, { x: 0, z: 3 }],
       movers: [{ type: 'pendulum', x: -1.5, z: -3, y: 1.5, len: 0.9, axis: 'z', swing: 0.55, speed: 1.4, baseY: 1.6 }],
     },
-    { // 25 — EL TÚNEL DE VIENTO (rehecho): sopladores laterales EMPUJAN el dron hacia las lámparas;
+    { // 24 — EL CONO CARACOL (rediseñado, era ≈ N15 más fácil): embudo que sube 5.2 m — cada vuelta
+      // MÁS CERRADA (cono) y MÁS ALTA; la cima es una meseta chiquita con la meta.
+      name: 'El cono caracol', ceiling: 7.4, flightHeight: 1.4,
+      rects: [{ x: 0, z: 0, w: 13, d: 13 }],
+      terrain: [{ type: 'funnel', cx: 0, cz: 0, rMin: 0.9, rMax: 4.6, h: 5.2 }],
+      start: { x: 0, z: 5.6 },
+      goal: { x: 0.3, y: 6.2, z: 0.3 },                 // la CIMA del cono
+      points: [{ x: 0, z: 4.2 }, { x: -2.26, z: -2.26 }, { x: 2.2, z: 0 }],   // espiral: bajo → medio → alto
+    },
+    { // 25 — LA TORRE: pisos 0→4 EN UNA MISMA DIRECCIÓN (pedido Jorge): 4 escaleras seguidas hacia el
+      // norte, cada una sube un piso entero (1.9). La meta arriba del todo, escondida a la izquierda.
+      name: 'La torre', ceiling: 10, flightHeight: 1.4,
+      rects: [{ x: 0, z: 0, w: 6, d: 26 }],
+      terrain: [
+        { type: 'rampz', minx: -3, maxx: 3, z0: 9, z1: 7, h0: 0, h1: 1.9 },
+        { type: 'plateau', minx: -3, maxx: 3, minz: 5, maxz: 7, h: 1.9 },
+        { type: 'rampz', minx: -3, maxx: 3, z0: 5, z1: 3, h0: 1.9, h1: 3.8 },
+        { type: 'plateau', minx: -3, maxx: 3, minz: 1, maxz: 3, h: 3.8 },
+        { type: 'rampz', minx: -3, maxx: 3, z0: 1, z1: -1, h0: 3.8, h1: 5.7 },
+        { type: 'plateau', minx: -3, maxx: 3, minz: -3, maxz: -1, h: 5.7 },
+        { type: 'rampz', minx: -3, maxx: 3, z0: -3, z1: -5, h0: 5.7, h1: 7.6 },
+        { type: 'plateau', minx: -3, maxx: 3, minz: -13, maxz: -5, h: 7.6 },
+      ],
+      start: { x: 0, z: 11.5 },
+      goal: { x: -1.8, y: 8.7, z: -11 },
+      points: [{ x: 1.6, z: 6 }, { x: -1.6, z: 2 }, { x: 1.6, z: -2 }, { x: 0, z: -7.5 }],  // zigzag por los rellanos
+      traps: [{ x: 0, z: 10, r: 0.9, type: 'balloon' }],
+    },
+    { // 26 — EL TÚNEL DE VIENTO (rehecho): sopladores laterales EMPUJAN el dron hacia las lámparas;
       // corriges el rumbo contra el viento. Elemento nuevo: viento que desplaza, no rompe.
       name: 'El túnel de viento', ceiling: 4, flightHeight: 1.4,
       rects: [{ x: 0, z: 0, w: 8, d: 24 }],
@@ -358,7 +373,7 @@
         { type: 'blower', x: 3.6, z: -2, y: 0.6, zone: { minx: -3.4, maxx: 3.4, minz: -4, maxz: 0 }, f: [-1.7, 0, 0] },
       ],
     },
-    { // 26 — LA BATERÍA (rehecho): dos cañones al fondo disparan parábolas de 45° hacia ti, desfasados;
+    { // 27 — LA BATERÍA (rehecho): dos cañones al fondo disparan parábolas de 45° hacia ti, desfasados;
       // avanzas leyendo el ritmo de las balas. Elemento nuevo: cañón.
       name: 'La batería', ceiling: 4.2, flightHeight: 1.4,
       rects: [{ x: 0, z: 0, w: 12, d: 16 }],
@@ -370,7 +385,7 @@
         { type: 'cannon', x: 2.5, z: -6, aim: Math.PI / 2, v0: 6.6, period: 3, phase: 1.5 },
       ],
     },
-    { // 27 — EL VOLCÁN: dona grande con PICO central más alto — valle anular entre las dos crestas.
+    { // 28 — EL VOLCÁN: dona grande con PICO central más alto — valle anular entre las dos crestas.
       name: 'El volcán', ceiling: 6.5, flightHeight: 1.4,
       rects: [{ x: 0, z: 0, w: 14, d: 14 }],
       terrain: [
@@ -381,7 +396,7 @@
       goal: { x: 3.2, y: 3.4, z: -1.85 },
       points: [{ x: 0, z: 3.7 }, { x: 0.8, z: 0 }, { x: -3.2, z: -1.85 }],   // cresta → PICO → cresta opuesta
     },
-    { // 28 — EL VALLE: dos mesetas laterales con rampas de ancho completo y un valle con ventilador.
+    { // 29 — EL VALLE: dos mesetas laterales con rampas de ancho completo y un valle con ventilador.
       name: 'El valle', ceiling: 6, flightHeight: 1.4,
       rects: [{ x: 0, z: 0, w: 14, d: 12 }],
       terrain: [
@@ -395,7 +410,7 @@
       points: [{ x: 5, z: 4 }, { x: 0, z: -4.5 }, { x: -5, z: 4 }],   // derecha (cebo) → valle → izquierda
       movers: [{ type: 'fan', x: 0, z: 0, y: 1.9, r: 0.8, axis: 'x', speed: 1.0 }],
     },
-    { // 29 — LOS GÉISERES (rehecho): chorros verticales que te LANZAN al techo si pasas encima —
+    { // 30 — LOS GÉISERES (rehecho): chorros verticales que te LANZAN al techo si pasas encima —
       // serpentea entre ellos. Elemento nuevo: empuje vertical.
       name: 'Los géiseres', ceiling: 3.4, flightHeight: 1.4,
       rects: [{ x: 0, z: 0, w: 13, d: 13 }],
@@ -409,7 +424,7 @@
         { type: 'geyser', x: 2.5, z: -4.5, zone: { minx: 1.8, maxx: 3.2, minz: -5.2, maxz: -3.8 }, f: [0, 3.6, 0] },
       ],
     },
-    { // 30 — LA FORTALEZA (rehecho): la pista con un CAÑÓN ROTATORIO en la isla central — las balas
+    { // 31 — LA FORTALEZA (rehecho): la pista con un CAÑÓN ROTATORIO en la isla central — las balas
       // caen en el corredor mientras das la vuelta. Barrotes cierran el atajo.
       name: 'La fortaleza', ceiling: 7, flightHeight: 1.4,
       rects: [{ x: 0, z: 0, w: 14, d: 14 }],
@@ -424,7 +439,7 @@
       points: [{ x: -3.8, z: 0 }, { x: 0, z: -3.8 }, { x: 3.8, z: 0 }],
       movers: [{ type: 'cannon', x: 0, z: 0, aim: 0, v0: 6.1, period: 3, rotate: 0.7, h0: 2.2 }],
     },
-    { // 31 — EL ASCENSOR DE AIRE (puzle): la meseta NO tiene rampa (muro frontal) — la única subida
+    { // 32 — EL ASCENSOR DE AIRE (puzle): la meseta NO tiene rampa (muro frontal) — la única subida
       // es dejar que el GÉISER te lance por encima del muro. El viento como herramienta, no castigo.
       name: 'El ascensor de aire', ceiling: 6.4, flightHeight: 1.4,
       rects: [{ x: 0, z: 0, w: 12, d: 14 }],
@@ -435,7 +450,7 @@
       points: [{ x: 2.5, z: 3 }, { x: 0, z: 0.5 }, { x: 3.5, z: -5 }],
       movers: [{ type: 'geyser', x: 0, z: -0.9, zone: { minx: -0.9, maxx: 0.9, minz: -1.9, maxz: 0.1 }, f: [0, 4.2, 0] }],
     },
-    { // 32 — VIENTO CRUZADO: las olas de skate + sopladores alternos en las crestas.
+    { // 33 — VIENTO CRUZADO: las olas de skate + sopladores alternos en las crestas.
       name: 'Viento cruzado', ceiling: 5.4, flightHeight: 1.4,
       rects: [{ x: 0, z: 0, w: 8, d: 24 }],
       terrain: [
@@ -450,7 +465,7 @@
         { type: 'blower', x: 3.6, z: 1, y: 2.2, zone: { minx: -3.4, maxx: 3.4, minz: -0.5, maxz: 2.5 }, f: [-1.8, 0, 0] },
       ],
     },
-    { // 33 — EL ORGANILLO: fila de géiseres que PULSAN por fases — cruzas al ritmo (activo 50% del ciclo).
+    { // 34 — EL ORGANILLO: fila de géiseres que PULSAN por fases — cruzas al ritmo (activo 50% del ciclo).
       name: 'El organillo', ceiling: 3.4, flightHeight: 1.4,
       rects: [{ x: 0, z: 0, w: 7, d: 20 }],
       start: { x: 0, z: 8.5 },
@@ -463,7 +478,7 @@
         { type: 'geyser', x: 0, z: -6, zone: { minx: -3.5, maxx: 3.5, minz: -6.7, maxz: -5.3 }, f: [0, 3.8, 0], period: 3, duty: 0.5, phase: 0.5 },
       ],
     },
-    { // 34 — CAÑONES CRUZADOS: dos cañones en esquinas opuestas cruzan fuego sobre el volcán chico central.
+    { // 35 — CAÑONES CRUZADOS: dos cañones en esquinas opuestas cruzan fuego sobre el volcán chico central.
       name: 'Cañones cruzados', ceiling: 5, flightHeight: 1.4,
       rects: [{ x: 0, z: 0, w: 14, d: 14 }],
       terrain: [{ type: 'ringplat', cx: 0, cz: 0, rIn: 0.6, rOut: 1.8, h: 1.6, skirt: 0.5 }],
@@ -475,49 +490,38 @@
         { type: 'cannon', x: 5.5, z: -5.5, aim: 135 * Math.PI / 180, v0: 7.2, period: 3, phase: 1.5 },
       ],
     },
-    { // 35 — EL VENDAVAL: el valle entre mesetas, con un soplador que te arrastra al cruzarlo.
-      name: 'El vendaval', ceiling: 6, flightHeight: 1.4,
-      rects: [{ x: 0, z: 0, w: 14, d: 12 }],
+    { // 36 — EL DESFILADERO: cañón ANGOSTO entre dos mesetas de DISTINTA altura, viento a lo largo del
+      // cañón y péndulo a mitad de camino. (Reemplaza al Vendaval, que era clon del Valle.)
+      name: 'El desfiladero', ceiling: 6.4, flightHeight: 1.4,
+      rects: [{ x: 0, z: 0, w: 14, d: 14 }],
       terrain: [
-        { type: 'plateau', minx: -7, maxx: -3, minz: -6, maxz: 6, h: 2.2 },
-        { type: 'rampx', minz: -6, maxz: 6, x0: -3, x1: -1.4, h0: 2.2, h1: 0 },
-        { type: 'plateau', minx: 3, maxx: 7, minz: -6, maxz: 6, h: 2.2 },
-        { type: 'rampx', minz: -6, maxz: 6, x0: 3, x1: 1.4, h0: 2.2, h1: 0 },
+        { type: 'plateau', minx: -7, maxx: -1.3, minz: -7, maxz: 7, h: 1.8 },
+        { type: 'rampx', minz: -7, maxz: 7, x0: -1.3, x1: -0.6, h0: 1.8, h1: 0 },
+        { type: 'plateau', minx: 1.3, maxx: 7, minz: -7, maxz: 7, h: 2.8 },
+        { type: 'rampx', minz: -7, maxz: 7, x0: 1.3, x1: 0.6, h0: 2.8, h1: 0 },
       ],
-      start: { x: 5, z: 4.5 },
-      goal: { x: -5, y: 3.2, z: -4 },
-      points: [{ x: 5, z: -4 }, { x: 0, z: 0 }, { x: -5, z: 4 }],
+      start: { x: 0, z: 5.2 },
+      goal: { x: 4.5, y: 4.2, z: -4.5 },
+      points: [{ x: 0, z: 1.5 }, { x: -4.5, z: -2 }, { x: 0, z: -4.5 }],   // cañón → meseta baja → cañón otra vez
       movers: [
-        { type: 'blower', x: 0, z: 5.5, y: 0.6, zone: { minx: -1.4, maxx: 1.4, minz: -6, maxz: 6 }, f: [0, 0, 2.0] },
-        { type: 'pendulum', x: -5, z: 0, y: 1.5, len: 0.9, axis: 'z', swing: 0.6, speed: 1.4, baseY: 2.2 },
+        { type: 'blower', x: 0, z: 6.8, y: 0.6, zone: { minx: -0.9, maxx: 0.9, minz: -7, maxz: 6 }, f: [0, 0, -2.0] },
+        { type: 'pendulum', x: 0, z: -1.5, y: 2.6, len: 1.15, axis: 'x', swing: 0.6, speed: 1.5 },
       ],
     },
-    { // 36 — LA BARRERA DE AIRE: la herradura, pero el hueco de salida tiene un soplador EN CONTRA —
-      // hay que empujar a fondo para atravesar el chorro.
-      name: 'La barrera de aire', ceiling: 3.2, flightHeight: 1.4,
+    { // 37 — LA CONTRACURVA VENTOSA: la contracurva… con un soplador cruzado tapando el hueco de salida
+      // OESTE — empuja de costado justo al atravesar. (Reemplaza a la Barrera, clon de la curva 13.)
+      name: 'La contracurva ventosa', ceiling: 3.2, flightHeight: 1.4,
       rects: [{ x: 0, z: 0.5, w: 13, d: 13 }],
       ring: {
         cx: 0, cz: -0.5, rIn: 2.6, rOut: 4.6, h: 1.8,
-        gaps: [[78 * Math.PI / 180, 102 * Math.PI / 180], [346 * Math.PI / 180, 360 * Math.PI / 180], [0, 14 * Math.PI / 180]],
+        gaps: [[78 * Math.PI / 180, 102 * Math.PI / 180], [166 * Math.PI / 180, 194 * Math.PI / 180]],
         chute: { x: 1.18, t: 0.2, z0: 3.9, z1: 5.9 },
-        posts: [{ x: 2.12, z: 1.62 }, { x: 2.55, z: 2.05 }, { x: 2.97, z: 2.47 }],
+        posts: [{ x: -2.12, z: 1.62 }, { x: -2.55, z: 2.05 }, { x: -2.97, z: 2.47 }],
       },
       start: { x: 0, z: 5.2 },
-      goal: { x: 5.6, y: 1.5, z: -0.5 },
-      points: [{ x: -3.12, z: 1.3 }, { x: -3.12, z: -2.3 }, { x: 1.8, z: -3.62 }],
-      movers: [{ type: 'blower', x: 6.3, z: -2.4, y: 0.6, zone: { minx: 4.4, maxx: 6.4, minz: -1.5, maxz: 0.5 }, f: [0, 0, 2.2] }],
-    },
-    { // 37 — LA DONA VENTOSA: la dona-skate con géiser en el CENTRO del hoyo y soplador tangencial arriba.
-      name: 'La dona ventosa', ceiling: 6, flightHeight: 1.4,
-      rects: [{ x: 0, z: 0, w: 13, d: 13 }],
-      terrain: [{ type: 'ringplat', cx: 0, cz: 0, rIn: 2.6, rOut: 5.0, h: 2.0, skirt: 0.6 }],
-      start: { x: 0, z: 5.7 },
-      goal: { x: 3.74, y: 3.4, z: -0.66 },
-      points: [{ x: 2.18, z: 3.11 }, { x: -3.8, z: 0 }, { x: 0, z: -3.8 }],
-      movers: [
-        { type: 'geyser', x: 0, z: 0, zone: { minx: -0.8, maxx: 0.8, minz: -0.8, maxz: 0.8 }, f: [0, 4.0, 0] },
-        { type: 'blower', x: -5.9, z: 0, y: 2.4, zone: { minx: -5.2, maxx: -2.4, minz: -1.4, maxz: 1.4 }, f: [0, 0, 1.8] },
-      ],
+      goal: { x: -5.6, y: 1.5, z: -0.5 },
+      points: [{ x: 3.12, z: 1.3 }, { x: 3.12, z: -2.3 }, { x: -1.8, z: -3.62 }],
+      movers: [{ type: 'blower', x: -6.3, z: -2.4, y: 0.6, zone: { minx: -6.4, maxx: -4.4, minz: -1.5, maxz: 0.5 }, f: [0, 0, 2.2] }],
     },
     { // 38 — LA ESCALERA VENTOSA: dos pisos con sopladores cruzados en cada rellano.
       name: 'La escalera ventosa', ceiling: 6.6, flightHeight: 1.4,
@@ -549,22 +553,168 @@
       points: [{ x: -2.61, z: 0.7 }, { x: -0.7, z: -2.61 }, { x: 1.35, z: -2.34 }],
       movers: [{ type: 'cannon', x: -5.6, z: -5.6, aim: 45 * Math.PI / 180, v0: 7.4, period: 3, h0: 1.2 }],
     },
-    { // 40 — LA TORMENTA (final): pista + cañón rotatorio + soplador en el corredor + géiser en la entrada.
+    { // 40 — LA TORMENTA: pista ANCHA (corredor 2.4) + cañón rotatorio + soplador + géiser; casi vuelta y media.
       name: 'La tormenta', ceiling: 7, flightHeight: 1.4,
       rects: [{ x: 0, z: 0, w: 14, d: 14 }],
       ring: {
-        cx: 0, cz: 0, rIn: 2.6, rOut: 5.0, h: 1.8,
+        cx: 0, cz: 0, rIn: 3.2, rOut: 5.6, h: 1.8,
         gaps: [[78 * Math.PI / 180, 102 * Math.PI / 180]],
-        chute: { x: 1.18, t: 0.2, z0: 4.6, z1: 6.3 },
-        posts: [{ x: 2.12, z: 2.12 }, { x: 2.62, z: 2.62 }, { x: 3.11, z: 3.11 }],
+        chute: { x: 1.18, t: 0.2, z0: 5.2, z1: 6.6 },
+        posts: [{ x: 2.40, z: 2.40 }, { x: 2.97, z: 2.97 }, { x: 3.54, z: 3.54 }],
       },
-      start: { x: 0, z: 5.8 },
-      goal: { x: -2.69, y: 1.5, z: 2.26 },
-      points: [{ x: -3.8, z: 0 }, { x: 0, z: -3.8 }, { x: 3.8, z: 0 }],
+      start: { x: 0, z: 6.1 },
+      goal: { x: -3.81, y: 1.5, z: 2.2 },
+      points: [{ x: -3.11, z: -3.11 }, { x: 0, z: -4.4 }, { x: 3.11, z: -3.11 }, { x: 4.4, z: 0 }],   // casi la vuelta y media
       movers: [
         { type: 'cannon', x: 0, z: 0, aim: 0, v0: 6.1, period: 3, rotate: -0.6, h0: 2.2 },
-        { type: 'blower', x: 0, z: -5.7, y: 2.0, zone: { minx: -1.5, maxx: 1.5, minz: -5.0, maxz: -2.6 }, f: [2.0, 0, 0] },
+        { type: 'blower', x: 0, z: -6.2, y: 2.0, zone: { minx: -1.5, maxx: 1.5, minz: -5.6, maxz: -3.4 }, f: [2.0, 0, 0] },
         { type: 'geyser', x: 2.2, z: 4.4, zone: { minx: 1.5, maxx: 2.9, minz: 3.7, maxz: 5.1 }, f: [0, 3.6, 0] },
+      ],
+    },
+    { // 41 — EL CIRCUITO (innovador, pedido Jorge): GRAN pista circular AMPLIA (corredor 3.4) para ir
+      // RÁPIDO un rato largo — una vuelta de ~40 m, sin obstáculos, 6 puntos marcando el ritmo.
+      name: 'El circuito', ceiling: 3.6, flightHeight: 1.4,
+      rects: [{ x: 0, z: 0, w: 19, d: 19 }],
+      ring: { cx: 0, cz: 0, rIn: 4.6, rOut: 8.0, h: 1.8 },   // CERRADO: arrancas dentro del corredor
+      start: { x: 0, z: 6.3 },
+      goal: { x: 2.15, y: 1.5, z: 5.92 },
+      points: [{ x: -4.45, z: 4.45 }, { x: -6.3, z: 0 }, { x: -4.45, z: -4.45 }, { x: 0, z: -6.3 }, { x: 4.45, z: -4.45 }, { x: 6.3, z: 0 }],
+    },
+    { // 42 — LA ESE (innovador, pedido Jorge: "curva para un lado, curva para el otro"): dos anillos
+      // encadenados — rodeas el primero por la IZQUIERDA y el segundo por la DERECHA. Una S de verdad.
+      name: 'La ese', ceiling: 3.4, flightHeight: 1.4,
+      rects: [{ x: 0, z: 0.5, w: 15, d: 25 }],
+      rings: [
+        { cx: 0, cz: 6, rIn: 2.2, rOut: 4.2, h: 1.8,
+          gaps: [[80 * Math.PI / 180, 100 * Math.PI / 180], [260 * Math.PI / 180, 280 * Math.PI / 180]],
+          chute: { x: 1.18, t: 0.2, z0: 10.4, z1: 12.2 },
+          posts: [{ x: 2.25, z: 7.3 }, { x: 2.77, z: 7.6 }, { x: 3.29, z: 7.9 }] },      // φ30: por la derecha NO
+        { cx: 0, cz: -3.4, rIn: 2.2, rOut: 4.2, h: 1.8,
+          gaps: [[80 * Math.PI / 180, 100 * Math.PI / 180], [260 * Math.PI / 180, 280 * Math.PI / 180]],
+          posts: [{ x: -2.25, z: -2.1 }, { x: -2.77, z: -1.8 }, { x: -3.29, z: -1.5 }] },  // φ150: por la izquierda NO
+      ],
+      start: { x: 0, z: 11.5 },
+      goal: { x: 0, y: 1.5, z: -9.5 },
+      points: [{ x: -2.26, z: 8.26 }, { x: -2.26, z: 3.74 }, { x: 2.26, z: -1.14 }, { x: 2.26, z: -5.66 }],
+    },
+    { // 43 — LA GRAN BAJADA (innovador, pedido Jorge: "muy larga, un solo sentido, siempre bajando"):
+      // 44 m de descenso escalonado desde h=6 — el planeo hace la mitad del trabajo; slalom al final.
+      name: 'La gran bajada', ceiling: 8.6, flightHeight: 1.4,
+      rects: [{ x: 0, z: 0, w: 8, d: 44 }],
+      terrain: [
+        { type: 'plateau', minx: -4, maxx: 4, minz: 18, maxz: 22, h: 6.0 },
+        { type: 'rampz', minx: -4, maxx: 4, z0: 18, z1: 14, h0: 6.0, h1: 4.8 },
+        { type: 'plateau', minx: -4, maxx: 4, minz: 12, maxz: 14, h: 4.8 },
+        { type: 'rampz', minx: -4, maxx: 4, z0: 12, z1: 8, h0: 4.8, h1: 3.6 },
+        { type: 'plateau', minx: -4, maxx: 4, minz: 6, maxz: 8, h: 3.6 },
+        { type: 'rampz', minx: -4, maxx: 4, z0: 6, z1: 2, h0: 3.6, h1: 2.4 },
+        { type: 'plateau', minx: -4, maxx: 4, minz: 0, maxz: 2, h: 2.4 },
+        { type: 'rampz', minx: -4, maxx: 4, z0: 0, z1: -4, h0: 2.4, h1: 1.2 },
+        { type: 'plateau', minx: -4, maxx: 4, minz: -6, maxz: -4, h: 1.2 },
+        { type: 'rampz', minx: -4, maxx: 4, z0: -6, z1: -10, h0: 1.2, h1: 0 },
+      ],
+      start: { x: 0, z: 20 },
+      goal: { x: 0, y: 1.4, z: -20 },
+      points: [{ x: 0, z: 13 }, { x: 2, z: 7 }, { x: -2, z: 1 }, { x: 0, z: -5 }],
+      obstacles: [{ type: 'lamp', x: 2, z: -13 }, { type: 'lamp', x: -2, z: -17 }],
+    },
+    { // 44 — EL DESCENSO DEL CONO (familia del cono — Jorge: que no quede de una sola vez): despegas en la
+      // CIMA y bajas la espiral del embudo hacia afuera; los puntos van marcando la caída.
+      name: 'El descenso del cono', ceiling: 8.2, flightHeight: 1.4,
+      rects: [{ x: 0, z: 0, w: 14, d: 14 }],
+      terrain: [{ type: 'funnel', cx: 0, cz: 0, rMin: 0.9, rMax: 5.2, h: 5.6 }],
+      start: { x: 0, z: 0.2 },                          // arrancas ARRIBA
+      goal: { x: 0, y: 1.4, z: -5.9 },                  // el piso, afuera del cono
+      points: [{ x: 1.6, z: 0 }, { x: -2.8, z: 0 }, { x: 2.83, z: -2.83 }],   // radio creciente = altura decreciente
+    },
+    { // 45 — EL RELOJ (innovador): pista circular CERRADA con un cañón rotatorio LENTO en el centro — la
+      // "manecilla" barre el corredor sin parar; corres por delante de ella toda la vuelta.
+      name: 'El reloj', ceiling: 4.2, flightHeight: 1.4,
+      rects: [{ x: 0, z: 0, w: 15, d: 15 }],
+      ring: { cx: 0, cz: 0, rIn: 2.8, rOut: 5.4, h: 1.8 },
+      start: { x: 0, z: 4.1 },
+      goal: { x: 2.05, y: 1.5, z: 3.55 },
+      points: [{ x: -4.1, z: 0 }, { x: 0, z: -4.1 }, { x: 4.1, z: 0 }],
+      movers: [{ type: 'cannon', x: 0, z: 0, aim: 90 * Math.PI / 180, v0: 6.0, period: 1.6, rotate: 0.45, h0: 2.2 }],
+    },
+    { // 46 — EL TABLERO (innovador): 9 géiseres en tablero de ajedrez pulsando ALTERNADOS — cruzas leyendo
+      // el patrón: cuando las "negras" soplan, las "blancas" descansan. El organillo, en 2D.
+      name: 'El tablero', ceiling: 3.4, flightHeight: 1.4,
+      rects: [{ x: 0, z: 0, w: 13, d: 17 }],
+      start: { x: 0, z: 6.8 },
+      goal: { x: 0, y: 1.4, z: -6.8 },
+      points: [{ x: -1.3, z: 1.7 }, { x: 1.3, z: -1.7 }, { x: 0, z: -5.1 }],
+      movers: [
+        { type: 'geyser', x: -2.6, z: 3.4, zone: { minx: -3.4, maxx: -1.8, minz: 2.6, maxz: 4.2 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 0 },
+        { type: 'geyser', x: 0, z: 3.4, zone: { minx: -0.8, maxx: 0.8, minz: 2.6, maxz: 4.2 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 1.5 },
+        { type: 'geyser', x: 2.6, z: 3.4, zone: { minx: 1.8, maxx: 3.4, minz: 2.6, maxz: 4.2 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 0 },
+        { type: 'geyser', x: -2.6, z: 0, zone: { minx: -3.4, maxx: -1.8, minz: -0.8, maxz: 0.8 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 1.5 },
+        { type: 'geyser', x: 0, z: 0, zone: { minx: -0.8, maxx: 0.8, minz: -0.8, maxz: 0.8 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 0 },
+        { type: 'geyser', x: 2.6, z: 0, zone: { minx: 1.8, maxx: 3.4, minz: -0.8, maxz: 0.8 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 1.5 },
+        { type: 'geyser', x: -2.6, z: -3.4, zone: { minx: -3.4, maxx: -1.8, minz: -4.2, maxz: -2.6 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 0 },
+        { type: 'geyser', x: 0, z: -3.4, zone: { minx: -0.8, maxx: 0.8, minz: -4.2, maxz: -2.6 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 1.5 },
+        { type: 'geyser', x: 2.6, z: -3.4, zone: { minx: 1.8, maxx: 3.4, minz: -4.2, maxz: -2.6 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 0 },
+      ],
+    },
+    { // 47 — EL TURBO (innovador): viento A FAVOR todo el corredor — vas disparado — pero hay lámparas de
+      // slalom: esquivar A ALTA VELOCIDAD. El viento como turbo, no como castigo.
+      name: 'El turbo', ceiling: 4, flightHeight: 1.4,
+      rects: [{ x: 0, z: 0, w: 8, d: 30 }],
+      start: { x: 0, z: 13.5 },
+      goal: { x: 0, y: 1.4, z: -13.5 },
+      points: [{ x: 0, z: 7 }, { x: 0, z: -1 }, { x: 0, z: -9 }],
+      obstacles: [
+        { type: 'lamp', x: 1.8, z: 9 }, { type: 'lamp', x: -1.8, z: 5 }, { type: 'lamp', x: 1.8, z: 1 },
+        { type: 'lamp', x: -1.8, z: -3 }, { type: 'lamp', x: 1.8, z: -7 },
+      ],
+      movers: [{ type: 'blower', x: 2.8, z: 14.2, y: 0.6, zone: { minx: -3.4, maxx: 3.4, minz: -13, maxz: 14 }, f: [0, 0, -2.6] }],
+    },
+    { // 48 — LAS AGUJAS (innovador): bosque de TORRES finas del piso al techo — slalom puro en 3D, colisión
+      // de cilindro exacta. Primer nivel donde el peligro es el BOSQUE, no el muro.
+      name: 'Las agujas', ceiling: 3.4, flightHeight: 1.4,
+      rects: [{ x: 0, z: 0, w: 13, d: 19 }],
+      columns: [
+        { x: -1.8, z: 7, r: 0.4, h: 3.2 }, { x: 1.6, z: 6, r: 0.4, h: 3.2 }, { x: -0.5, z: 4.6, r: 0.4, h: 3.2 },
+        { x: 2.8, z: 3.4, r: 0.4, h: 3.2 }, { x: -2.6, z: 3, r: 0.4, h: 3.2 }, { x: 0.6, z: 1.8, r: 0.4, h: 3.2 },
+        { x: -1.2, z: -0.2, r: 0.4, h: 3.2 }, { x: 2.2, z: -1, r: 0.4, h: 3.2 }, { x: -3, z: -2.2, r: 0.4, h: 3.2 },
+        { x: 0, z: -3.4, r: 0.4, h: 3.2 }, { x: 1.8, z: -5, r: 0.4, h: 3.2 }, { x: -1.6, z: -6.2, r: 0.4, h: 3.2 },
+      ],
+      start: { x: 0, z: 8.6 },
+      goal: { x: 0, y: 1.4, z: -8.3 },
+      points: [{ x: 0.4, z: 5.6 }, { x: -1.5, z: 2.2 }, { x: 1, z: -2.2 }],
+    },
+    { // 49 — EL ZIGURAT (familia de subidas): sube en U — rampa OESTE al piso 1, vuelta por el rellano
+      // norte (con ventilador), rampa ESTE que sube AL SUR hasta el piso 2 con la meta.
+      name: 'El zigurat', ceiling: 7.4, flightHeight: 1.4,
+      rects: [{ x: 0, z: 0.5, w: 10, d: 15 }],
+      terrain: [
+        { type: 'rampz', minx: -5, maxx: -1, z0: 6, z1: 2, h0: 0, h1: 2 },
+        { type: 'plateau', minx: -5, maxx: 5, minz: -7, maxz: 2, h: 2 },
+        { type: 'rampz', minx: 1, maxx: 5, z0: -2, z1: 2, h0: 2, h1: 4 },
+        { type: 'plateau', minx: 1, maxx: 5, minz: 2, maxz: 7, h: 4 },
+      ],
+      start: { x: -3, z: 7 },
+      goal: { x: 3, y: 5.4, z: 5.5 },
+      points: [{ x: -3, z: 4 }, { x: -2.5, z: -4.5 }, { x: 3, z: 0 }],
+      movers: [{ type: 'fan', x: 0, z: -4.5, y: 2.0, r: 0.8, axis: 'x', speed: 1.0, baseY: 2 }],
+    },
+    { // 50 — LA TORMENTA PERFECTA (FINAL): el gran circuito con TODO — manecilla de cañón, viento a favor
+      // en el oeste, péndulo, géiseres pulsantes… y la vuelta completa obligada por barrotes.
+      name: 'La tormenta perfecta', ceiling: 4.4, flightHeight: 1.4,
+      rects: [{ x: 0, z: 0, w: 18, d: 18 }],
+      ring: {
+        cx: 0, cz: 0, rIn: 4.2, rOut: 7.6, h: 1.8,
+        posts: [{ x: 1.42, z: 4.37 }, { x: 1.67, z: 5.14 }, { x: 1.92, z: 5.90 }, { x: 2.16, z: 6.66 }],   // φ72: sentido único
+      },
+      start: { x: 0, z: 6.0 },
+      goal: { x: 2.77, y: 1.5, z: 5.21 },
+      points: [{ x: -4.17, z: 4.17 }, { x: -5.54, z: -2.02 }, { x: 1.7, z: -5.65 }, { x: 4.17, z: -4.17 }, { x: 5.65, z: -1.7 }, { x: 4.17, z: 4.17 }],
+      movers: [
+        { type: 'cannon', x: 0, z: 0, aim: 90 * Math.PI / 180, v0: 7.0, period: 2.2, rotate: 0.5, h0: 2.2 },
+        { type: 'blower', x: -6.9, z: 3.2, y: 0.6, zone: { minx: -7.6, maxx: -4.2, minz: -2.5, maxz: 2.5 }, f: [0, 0, -2.4] },
+        { type: 'pendulum', x: -5.9, z: 0, y: 2.4, len: 1.1, axis: 'x', swing: 0.6, speed: 1.5 },
+        { type: 'geyser', x: 0, z: -5.9, zone: { minx: -0.8, maxx: 0.8, minz: -6.7, maxz: -5.1 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 0 },
+        { type: 'geyser', x: 5.9, z: 0, zone: { minx: 5.1, maxx: 6.7, minz: -0.8, maxz: 0.8 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 1.5 },
       ],
     },
   ];
@@ -1013,9 +1163,10 @@
       colliders.push({ minx: w.x - w.w / 2, maxx: w.x + w.w / 2, miny: 0, maxy: ceilY, minz: w.z - w.d / 2, maxz: w.z + w.d / 2, kind: 'wall' });
     });
 
-    // PISTA CIRCULAR de muros BAJOS (la cámara ve por encima) + entrada recta (chute) + barrotes
-    if (L.ring) {
-      const rg = L.ring, cxr = rg.cx, czr = rg.cz, hW = rg.h || 1.8, T = 0.25;
+    // PISTA(S) CIRCULAR(ES) de muros BAJOS (la cámara ve por encima) + entrada recta (chute) + barrotes.
+    // `rings: [...]` = varios anillos (p.ej. "La ese"); `ring: {...}` legacy = uno.
+    for (const rg of (L.rings || (L.ring ? [L.ring] : []))) {
+      const cxr = rg.cx, czr = rg.cz, hW = rg.h || 1.8, T = 0.25;
       const trackMat = new THREE.MeshStandardMaterial({ color: 0xd8b487, roughness: 0.9, side: THREE.DoubleSide });
       const floorA = new THREE.Mesh(new THREE.RingGeometry(rg.rIn, rg.rOut, 72), trackMat);
       floorA.rotation.x = -Math.PI / 2; floorA.position.set(cxr, 0.02, czr); group.add(floorA);   // piso de la pista (madera)
@@ -1027,16 +1178,24 @@
       // muro EXTERNO bajo con APERTURAS (lista `gaps`; legacy gapA0/gapA1 = una sola). Un ARCO visual por
       // cada tramo ENTRE aperturas. Mapeo: θ_three = 90° − φ y el arco ARRANCA donde TERMINA la apertura
       // (con el otro borde quedaba corrido: pared visual SOBRE el hueco físico = "lámina penetrable", bug Jorge).
-      const gaps = (rg.gaps || [[rg.gapA0, rg.gapA1]]).slice().sort((a, b) => a[0] - b[0]);
-      for (let gi = 0; gi < gaps.length; gi++) {
-        const aEnd = gaps[gi][1];                                   // el muro arranca al TERMINAR esta apertura
-        const aNext = gi + 1 < gaps.length ? gaps[gi + 1][0] : gaps[0][0] + Math.PI * 2;   // ... hasta la siguiente
-        const span = aNext - aEnd;
-        if (span < 0.01) continue;
-        const wOut = new THREE.Mesh(new THREE.CylinderGeometry(rg.rOut, rg.rOut, hW, 72, 1, true, Math.PI / 2 - aEnd - span, span), lowMat(0xe9dcc4));
+      const gapsSrc = (rg.gaps && rg.gaps.length) ? rg.gaps : (rg.gapA0 != null ? [[rg.gapA0, rg.gapA1]] : null);
+      if (!gapsSrc) {
+        // CIRCUITO CERRADO (sin aperturas): cilindro externo completo
+        const wOut = new THREE.Mesh(new THREE.CylinderGeometry(rg.rOut, rg.rOut, hW, 96, 1, true), lowMat(0xe9dcc4));
         wOut.position.set(cxr, hW / 2, czr); group.add(wOut);
+        colliders.push({ shape: 'ring', cx: cxr, cz: czr, r: rg.rOut, t: T, y1: hW, gaps: [], kind: 'wall' });
+      } else {
+        const gaps = gapsSrc.slice().sort((a, b) => a[0] - b[0]);
+        for (let gi = 0; gi < gaps.length; gi++) {
+          const aEnd = gaps[gi][1];                                   // el muro arranca al TERMINAR esta apertura
+          const aNext = gi + 1 < gaps.length ? gaps[gi + 1][0] : gaps[0][0] + Math.PI * 2;   // ... hasta la siguiente
+          const span = aNext - aEnd;
+          if (span < 0.01) continue;
+          const wOut = new THREE.Mesh(new THREE.CylinderGeometry(rg.rOut, rg.rOut, hW, 72, 1, true, Math.PI / 2 - aEnd - span, span), lowMat(0xe9dcc4));
+          wOut.position.set(cxr, hW / 2, czr); group.add(wOut);
+        }
+        colliders.push({ shape: 'ring', cx: cxr, cz: czr, r: rg.rOut, t: T, y1: hW, gaps, kind: 'wall' });
       }
-      colliders.push({ shape: 'ring', cx: cxr, cz: czr, r: rg.rOut, t: T, y1: hW, gaps, kind: 'wall' });
       // CHUTE: pasillo recto de entrada — RIELES BAJOS (1.0 m): el dron (vuela a 1.4) pasa por encima
       // y la cámara nunca queda tapada al despegar ("lámina" que vio Jorge). Colisión = forma exacta (maxy 1.0).
       if (rg.chute) {
@@ -1150,9 +1309,8 @@
       colliders.push({ minx: bw.minx, maxx: bw.maxx, miny: 0, maxy: bw.h, minz: bw.minz, maxz: bw.maxz, kind: 'wall' });
     });
 
-    // COLUMNA central (caracol): cilindro sólido con colisión exacta
-    if (L.column) {
-      const c = L.column;
+    // COLUMNA(S): cilindro sólido con colisión exacta (`columns: [...]` = varias; `column` legacy = una)
+    for (const c of (L.columns || (L.column ? [L.column] : []))) {
       const col = new THREE.Mesh(new THREE.CylinderGeometry(c.r, c.r, c.h, 28), new THREE.MeshStandardMaterial({ color: 0xe0cba8, roughness: 0.85 }));
       col.position.set(c.x, c.h / 2, c.z); group.add(col);
       const cap = new THREE.Mesh(new THREE.CylinderGeometry(c.r + 0.12, c.r + 0.12, 0.12, 28), new THREE.MeshStandardMaterial({ color: 0xc9a06a, roughness: 0.85 }));
