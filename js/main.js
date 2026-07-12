@@ -3,7 +3,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 
-const VERSION = '0.10.0';   // v= para deploy/guard
+const VERSION = '0.10.1';   // v= para deploy/guard
 const $ = s => document.querySelector(s);
 const DRONE_R = 0.30;      // radio de colisión del dron (esfera)
 const PICKUP_R = 0.75;     // radio para recolectar un punto
@@ -488,10 +488,10 @@ async function submitScore(level, time) {
   let list = [];
   try {
     if (ghost) {                                  // SOLO PROBAR: lee la tabla, NO escribe (pedido Jorge)
-      const r = await fetch(SCORE_URL + (SCORE_URL.includes('?') ? '&' : '?') + 'level=' + level);
+      const r = await fetch(SCORE_URL + (SCORE_URL.includes('?') ? '&' : '?') + 'level=' + level + '&top=50');
       list = await r.json();
     } else {
-      const r = await fetch(SCORE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, level, time }) });
+      const r = await fetch(SCORE_URL + (SCORE_URL.includes('?') ? '&' : '?') + 'top=50', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, level, time }) });
       list = await r.json();
     }
   } catch (e) { list = []; }   // sin red / local → el juego sigue igual
@@ -499,14 +499,22 @@ async function submitScore(level, time) {
 }
 function renderBoard(list, level, myTime, myName) {
   const el = $('#bBoard'); if (!el) return;
-  if (!Array.isArray(list) || !list.length) { el.innerHTML = ''; el.style.display = 'none'; return; }
+  if (!Array.isArray(list)) list = [];
   const esc = s => String(s).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
   let myShown = false, rows = '<div class="hd">Mejores tiempos · Nivel ' + (level + 1) + '</div>';
   list.slice(0, 5).forEach((r, i) => {
-    const me = !myShown && r.name === myName && Math.abs(r.time - myTime) < 0.01;
+    const me = !myShown && !ghost && r.name === myName && Math.abs(r.time - myTime) < 0.01;
     if (me) myShown = true;
     rows += '<div class="' + (me ? 'me' : '') + '">' + (i + 1) + '. ' + esc(r.name) + ' — ' + (+r.time).toFixed(1) + 's</div>';
   });
+  // TU PUESTO siempre visible (Jorge 2026-07-12): en modo "sin marca" es el puesto que TENDRÍAS (no publica);
+  // compitiendo, si no saliste en el top-5 se agrega tu fila abajo. Lista top-50 → más allá se dice ">50".
+  if (!myShown) {
+    const ahead = list.filter(r => +r.time < myTime - 0.005).length;
+    const place = ahead >= 50 ? '>50' : '#' + (ahead + 1);
+    rows += '<div class="me">' + (ghost ? '→ Irías ' + place + ' — ' + myTime.toFixed(1) + 's (sin marca)'
+                                        : '→ Vas ' + place + ' — ' + myTime.toFixed(1) + 's') + '</div>';
+  }
   el.innerHTML = rows; el.style.display = 'inline-block';
 }
 function hideBanner() { $('#banner').classList.add('hidden'); }
@@ -548,8 +556,11 @@ function endLevel(win) {
     const best = LS.get('best' + levelIdx, null);
     const isBest = best == null || levelTime < best;
     if (isBest) LS.set('best' + levelIdx, +levelTime.toFixed(2));
-    showBanner((isBest && best != null ? '🏆 ¡NUEVO MEJOR TIEMPO! · ' : '🎉 ¡Llegaste! · ') + levelTime.toFixed(1) + 's', levelIdx >= 49 ? 'Toca para repetir' : 'Toca para seguir');
-    submitScore(levelIdx, levelTime);                                          // envía el tiempo + muestra el leaderboard del nivel
+    // TIEMPO + LEADERBOARD visibles al ganar (restaurado Jorge 2026-07-12; el resto de la UI sigue minimal)
+    $('#bTitle').textContent = (isBest && best != null ? '🏆 ¡NUEVO MEJOR TIEMPO! · ' : '¡Llegaste! · ') + levelTime.toFixed(1) + 's';
+    $('#bHint').textContent = levelIdx >= 49 ? 'Toca para repetir' : 'Toca para seguir';
+    $('#bBoard').innerHTML = ''; $('#banner').classList.remove('hidden');
+    submitScore(levelIdx, levelTime);                                          // envía (o solo lee en modo sin marca) + pinta la tabla
   } else {
     // NO tapamos la pantalla: se VE el choque — el dron se parte en SUS pedazos reales y la animación sigue.
     const noBattery = phys.battery <= 0;
