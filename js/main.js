@@ -3,7 +3,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 
-const VERSION = '0.9.2';   // v= para deploy/guard
+const VERSION = '0.9.3';   // v= para deploy/guard
 const $ = s => document.querySelector(s);
 const DRONE_R = 0.30;      // radio de colisión del dron (esfera)
 const PICKUP_R = 0.75;     // radio para recolectar un punto
@@ -534,6 +534,10 @@ function doTakeoff() {
 function endLevel(win) {
   if (state === 'win' || state === 'lose') return;
   state = win ? 'win' : 'lose'; stopLoop();
+  if (!win) {   // el dron EXPLOTÓ: congelar la física — si sigue con inercia, el "fantasma" invisible
+    // atraviesa paredes y la cámara (que persigue phys.pos) termina detrás de muros, lejos del despiece
+    phys.speed = 0; phys.yawVel = 0; phys.vel = { x: 0, y: 0, z: 0 };
+  }
   $('#touch').classList.add('hidden');                                        // fuera los controles de vuelo
   if (win) {
     // la META también desaparece al tocarla (como los puntos) — con su estallido (Jorge 2026-07-11)
@@ -573,7 +577,8 @@ function frame() {
   const now = performance.now(); let dt = (now - tPrev) / 1000; tPrev = now; if (dt > 0.05) dt = 0.05;
 
   if (state === 'fly' || state === 'lose' || state === 'win') {
-    const inp = controls.update();
+    const inp0 = controls.update();
+    const inp = state === 'lose' ? { thr: 0, yaw: 0 } : inp0;   // tras explotar el input ya no maneja al fantasma (en win sigue vivo — diseño v0.3.8)
     const groundY = house && house.terrainY ? house.terrainY(phys.pos.x, phys.pos.z) : 0;   // escalera/rampa
     phys.t.midHeight = effFH(phys.pos.x, phys.pos.z);   // menos aire arriba → vuela más pegado al piso local
     phys.update(dt, { thr: inp.thr, yaw: inp.yaw, groundY });
@@ -706,11 +711,32 @@ function keepDroneInView() {
 // ---------- muros que TAPAN la vista → transparentes (para ver el dron detrás de una pared) ----------
 const _wallRay = new THREE.Raycaster();
 const _wv1 = new THREE.Vector3(), _wv2 = new THREE.Vector3();
+let _wallSnap = false;   // al entrar en lose/win se restaura todo UNA vez (la pared del choque reaparece al instante)
+const _crashWalls = new Set();   // paredes del CHOQUE (a <0.9 del punto): NUNCA se desvanecen en lose/win
 function updateWallTransparency(dt) {
   if (!house || !drone) return;
   // También en 'lose'/'win': el zoom-out del choque puede dejar muros ENTRE cámara y despiece →
-  // se desvanecen igual que en vuelo "para poder ver" (Jorge 2026-07-11; reemplaza la regla vieja
-  // de congelar todo en pie — solo se apaga el muro que TAPA, el del choque sigue visible).
+  // se desvanecen igual que en vuelo "para poder ver" (Jorge 2026-07-11). PERO la pared del CHOQUE
+  // queda EN PIE (regla original de Jorge, reafirmada 2026-07-11 "las paredes explotan → revertir"):
+  // (a) snap-restauro todo al entrar al choque (venía desvanecida por la aproximación) y
+  // (b) el ray se queda corto (no alcanza la pared pegada al despiece) — ver abajo.
+  if (state === 'lose' || state === 'win') {
+    if (!_wallSnap) {
+      _wallSnap = true;
+      _crashWalls.clear();
+      for (const w of house.walls) {
+        const m = w.material; m.opacity = 1; if (m.transparent) { m.transparent = false; m.needsUpdate = true; } m.depthWrite = true; m.userData._bt = 99;
+        // pared(es) del choque por IDENTIDAD (un margen de distancia en el ray no es robusto: la cámara
+        // alta+diagonal cruza la cara del muro hasta ~0.9 antes del despiece que quedó DENTRO del muro)
+        const p = w.geometry.parameters;
+        const dx = Math.max(0, Math.abs(phys.pos.x - w.position.x) - p.width / 2);
+        const dz = Math.max(0, Math.abs(phys.pos.z - w.position.z) - p.depth / 2);
+        // radio 0.5 = radio del dron (0.30) + colchón: SOLO la pared realmente tocada (el despiece queda
+        // pegado/dentro de ella). Con 0.9 caían también paredes vecinas de pasillo que SÍ deben desvanecer.
+        if (dx * dx + dz * dz < 0.5 * 0.5) _crashWalls.add(w);
+      }
+    }
+  } else { _wallSnap = false; if (_crashWalls.size) _crashWalls.clear(); }
   const tgt = (_heroPiece && state === 'win') ? _heroPiece.mesh.position : phys.pos;   // en gol de muerto la cámara sigue a la PIEZA
   const cx = cam.position.x, cz = cam.position.z;
   const to = _wv1.set(tgt.x, tgt.y + 0.1, tgt.z);
@@ -719,7 +745,12 @@ function updateWallTransparency(dt) {
   let blockers = null;
   if (dist > 0.05) {
     dir.normalize();
-    _wallRay.set(cam.position, dir); _wallRay.far = dist + 0.4;         // muro(s) ENTRE cámara y dron
+    // En vuelo el ray pasa 0.4 más allá del dron (muro inminente también se apaga). Tras chocar NO:
+    // la pared del choque debe seguir EN PIE (Jorge: "las paredes explotan → revertir"). Ojo: phys.pos
+    // queda hasta ~0.45 DENTRO del muro (penetra radio 0.30 + avance del frame) → el ray se queda
+    // 0.65 ANTES del despiece para no alcanzar la cara del muro chocado.
+    _wallRay.set(cam.position, dir);
+    _wallRay.far = (state === 'lose' || state === 'win') ? Math.max(0.1, dist - 0.65) : dist + 0.4;
     const hits = _wallRay.intersectObjects(house.walls, false);
     if (hits.length) blockers = new Set(hits.map(h => h.object));
   }
@@ -727,8 +758,8 @@ function updateWallTransparency(dt) {
   // si no, un muro pide 0.06 y el otro 1 sobre el mismo material y queda oscilando a medias (caso lv10).
   const matBlock = new Map();
   for (const w of house.walls) {
-    let block = blockers ? blockers.has(w) : false;
-    if (!block) {   // muro PEGADO a la cámara (la cámara quedó dentro/detrás → el ray no lo detecta)
+    let block = (blockers ? blockers.has(w) : false) && !_crashWalls.has(w);   // pared del choque: EN PIE siempre
+    if (!block && !_crashWalls.has(w)) {   // muro PEGADO a la cámara (la cámara quedó dentro/detrás → el ray no lo detecta)
       const p = w.geometry.parameters;
       const dx = Math.max(0, Math.abs(cx - w.position.x) - p.width / 2);
       const dz = Math.max(0, Math.abs(cz - w.position.z) - p.depth / 2);
@@ -856,7 +887,7 @@ $('#playerName').addEventListener('input', e => { playerName = e.target.value.sl
 
 // ---------- hook de pruebas headless ----------
 window.__sim = {
-  THREE, get state() { return state; }, phys, controls, cam, get debris() { return debris; }, playOne, get buffers() { return buffers; },
+  THREE, get state() { return state; }, phys, controls, cam, renderer, get debris() { return debris; }, playOne, get buffers() { return buffers; },
   get house() { return house; }, get drone() { return drone; },
   setLevel(n) { levelIdx = n; buildLevel(n); },
   takeoff: doTakeoff,
