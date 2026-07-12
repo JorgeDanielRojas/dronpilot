@@ -3,7 +3,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 
-const VERSION = '0.10.1';   // v= para deploy/guard
+const VERSION = '0.11.0';   // v= para deploy/guard
 const $ = s => document.querySelector(s);
 const DRONE_R = 0.30;      // radio de colisión del dron (esfera)
 const PICKUP_R = 0.75;     // radio para recolectar un punto
@@ -56,11 +56,13 @@ const controls = new window.Controls({ mode: LS.get('ctl', 'touch') });
 const CRAFT_TUNE = {
   drone: {},
   coax: { maxSpeed: 6.0, fwdAccel: 8.6, drag: 1.5, yawMax: 1.7, yawAccel: 4.0, tiltMax: 0.46, rollFactor: 0.30, wobbleAmp: 0.2, riseDamp: 3.6, batterySec: 28, rotorIdleRPM: 18, rotorFullRPM: 46 },
+  bear: { maxSpeed: 6.5, fwdAccel: 9.5, drag: 1.45, yawMax: 1.9, yawAccel: 4.4, tiltMax: 0.5, rollFactor: 0.32, wobbleAmp: 0.26, riseDamp: 3.4, batterySec: 32, rotorIdleRPM: 22, rotorFullRPM: 52 },
+  fly: { maxSpeed: 5.6, fwdAccel: 8.0, drag: 1.6, yawMax: 2.0, yawAccel: 4.6, tiltMax: 0.42, rollFactor: 0.36, wobbleAmp: 0.34, riseDamp: 3.0, batterySec: 40, rotorIdleRPM: 10, rotorFullRPM: 22 },   // mariposa: flotona, aleteo = rotorRPM
 };
 // giro (rad) que pone la NARIZ del modelo mirando a −Z (dirección de vuelo). Se calibra con render.
 const _AXY = new THREE.Vector3(0, 1, 0);
-const CRAFT_YAW = { drone: Math.PI, coax: Math.PI };   // AMBOS venían mirando ATRÁS (la cámara-gimbal del quad apunta a +Z = frente del modelo) → 180°
-let house = null, drone = null, rotors = [], craft = LS.get('craft', 'drone'), levelIdx = 0, loadGen = 0;
+const CRAFT_YAW = { drone: Math.PI, coax: Math.PI, bear: Math.PI, fly: Math.PI };   // TODOS los GLB vienen con la nariz en +Z (medido con render de flechas) → 180°
+let house = null, drone = null, rotors = [], wings = [], craft = LS.get('craft', 'drone'), levelIdx = 0, loadGen = 0;
 let state = 'pre', flightHeight = 2.5, tPrev = performance.now(), debris = [], fx = [];
 let _postWinCrashed = false;   // choque cosmético permitido UNA vez tras ganar (el dron no es invencible)
 let _heroPiece = null;         // pieza del GOL DE MUERTO: la cámara la sigue y no expira
@@ -98,8 +100,15 @@ function applyWallpaper(url) {
 // ---------- carga de la nave (GLB) ----------
 const loader = new GLTFLoader();
 function loadCraft(kind) {
-  const url = kind === 'coax' ? 'models/simulus_heli.glb' : 'models/drone.glb';
-  const targetLen = kind === 'coax' ? 0.9 : 0.55;   // tamaño real dentro de la casa (m)
+  const SRC = {
+    drone: { url: 'models/drone.glb', len: 0.55 },
+    coax: { url: 'models/simulus_heli.glb', len: 0.9 },
+    bear: { url: 'models/bear.glb', len: 0.55, maxH: 0.6 },     // el oso es ALTO: tope vertical aparte
+    fly: { url: 'models/butterfly.glb', len: 0.68 },
+  };
+  const src = SRC[kind] || SRC.drone;
+  const url = src.url;
+  const targetLen = src.len;   // tamaño real dentro de la casa (m)
   const gen = ++loadGen;                            // generación: descarta cargas obsoletas (reconstrucción rápida)
   const holder = new THREE.Group();                 // se puebla async; física no depende de la malla
   const tiltPivot = new THREE.Group();              // hijo que recibe pitch/roll visual
@@ -110,7 +119,9 @@ function loadCraft(kind) {
     // escala por la dimensión horizontal más larga
     const box = new THREE.Box3().setFromObject(m); const size = new THREE.Vector3(); box.getSize(size);
     const horiz = Math.max(size.x, size.z) || 1;
-    const s = targetLen / horiz; m.scale.setScalar(s);
+    let s = targetLen / horiz;
+    if (src.maxH && size.y * s > src.maxH) s = src.maxH / size.y;   // nave alta (oso): que no sea una torre
+    m.scale.setScalar(s);
     // centrar en el origen del holder
     const box2 = new THREE.Box3().setFromObject(m); const c = new THREE.Vector3(); box2.getCenter(c);
     m.position.sub(c);
@@ -118,7 +129,7 @@ function loadCraft(kind) {
     m.rotation.y = CRAFT_YAW[kind] || 0;
     // rotores: SOLO los pivotes de hélice (no las mallas hijas '_Material_0' → si giro ambos se cancelan)
     const RX = /prop|rotor|blade|helice|hélice/i;
-    rotors = [];
+    rotors = []; wings = [];
     m.traverse(o => {
       if (!RX.test(o.name) || /material/i.test(o.name)) return;
       if (o.parent && RX.test(o.parent.name) && !/material/i.test(o.parent.name)) return; // ya tomamos el pivote padre
@@ -144,13 +155,54 @@ function loadCraft(kind) {
         });
       });
     }
+    // OSO (Jorge): material ESPONJOSO (peluche: rugosidad total, cero metal) + una PROPELA CLONADA
+    // del propio dron montada en la parte alta de la espalda (la cervical) — "parte de otro modelo".
+    if (kind === 'bear') {
+      m.traverse(o => {
+        if (!o.isMesh || !o.material) return;
+        (Array.isArray(o.material) ? o.material : [o.material]).forEach(mt => { mt.roughness = 1; mt.metalness = 0; mt.needsUpdate = true; });
+      });
+      const bb = new THREE.Box3().setFromObject(m); const bs = new THREE.Vector3(); bb.getSize(bs);
+      loader.load('models/drone.glb', (g2) => {
+        if (gen !== loadGen) return;                 // NO disponer g2: el clone comparte geometría/materiales
+        let prop = null; g2.scene.traverse(o => { if (!prop && /propeller_1_object$/i.test(o.name)) prop = o; });
+        if (!prop) return;
+        const rotor = new THREE.Group(); rotor.name = 'bear_rotor';
+        const pc = prop.clone(true); pc.position.set(0, 0, 0); rotor.add(pc);
+        const pb = new THREE.Box3().setFromObject(pc); const ps = new THREE.Vector3(); pb.getSize(ps);
+        const targetD = bs.x * 0.85;                 // diámetro ≈ ancho de hombros
+        rotor.scale.setScalar(targetD / (Math.max(ps.x, ps.z) || 1));
+        // mástil corto para que se LEA que va montada en la espalda
+        const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.016, 0.11, 8), new THREE.MeshStandardMaterial({ color: 0x555b64, metalness: 0.4 }));
+        mast.position.y = -0.055 / rotor.scale.x; mast.scale.setScalar(1 / rotor.scale.x); rotor.add(mast);
+        rotor.position.set(0, bs.y * 0.20, bs.z * 0.30);   // CERVICAL/espalda alta, montada hacia atrás (Jorge)
+        tiltPivot.add(rotor);
+        rotor.userData.spinDir = 1; rotor.userData.spinAxis = new THREE.Vector3(0, 1, 0);
+        rotors.push(rotor);
+      }, undefined, () => {});
+    }
+    // MARIPOSA (Jorge): ALETEO — las alas vienen separadas (cirugía offline wingL/wingR); cada una se
+    // re-cuelga de un PIVOTE y se bate alrededor del eje del cuerpo (línea nariz-cola, x=0).
+    if (kind === 'fly') {
+      const wingNodes = [];
+      m.traverse(o => { if (/^wing[LR]$/.test(o.name)) wingNodes.push(o); });
+      for (const wn of wingNodes) {
+        const parent = wn.parent;
+        const piv = new THREE.Group(); parent.add(piv); piv.add(wn);
+        piv.updateMatrixWorld(true);
+        const pq = new THREE.Quaternion(); piv.getWorldQuaternion(pq);
+        piv.userData.axis = new THREE.Vector3(0, 0, 1).applyQuaternion(pq.invert()).normalize();   // eje del cuerpo en frame local
+        piv.userData.side = wn.name === 'wingL' ? 1 : -1;
+        wings.push(piv);
+      }
+    }
     m.traverse(o => { if (o.isMesh) o.castShadow = true; });   // la nave PROYECTA sombra (cue de altura)
     tiltPivot.add(m);
     // EJE DE GIRO por rotor: el eje LOCAL que corresponde a la VERTICAL del mundo (un pivote del GLB
     // puede venir con ejes girados → rotateY a secas lo hace girar VERTICAL; caso propela, Jorge).
     holder.updateMatrixWorld(true);
     const _wq = new THREE.Quaternion(), _up = new THREE.Vector3(0, 1, 0);
-    rotors.forEach(r => { r.getWorldQuaternion(_wq); r.userData.spinAxis = _up.clone().applyQuaternion(_wq.clone().invert()).normalize(); });
+    rotors.forEach(r => { if (!r.userData.spinAxis) { r.getWorldQuaternion(_wq); r.userData.spinAxis = _up.clone().applyQuaternion(_wq.clone().invert()).normalize(); } });
     holder.userData.model = m;
   }, undefined, (err) => {
     // fallback: caja simple si el GLB no carga (nunca deja el juego sin nave)
@@ -603,6 +655,8 @@ function frame() {
       // pitch: acelerar adelante → NARIZ ABAJO (−rotation.x, porque la nariz mira a −Z); reversa → cola abajo.
       const tp = drone.userData.tilt; if (tp) { tp.rotation.x = -phys.tilt; tp.rotation.z = phys.roll; }
       for (const r of rotors) r.rotateOnAxis(r.userData.spinAxis || _AXY, phys.rotorRPM * dt * (r.userData.spinDir || 1));   // gira sobre SU eje vertical real (pivotes con ejes girados en el GLB)
+      // ALETEO de la mariposa: batir alrededor del eje del cuerpo; frecuencia = rotorRPM del tune
+      for (const w of wings) w.quaternion.setFromAxisAngle(w.userData.axis, w.userData.side * (0.14 + 0.42 * Math.sin(now / 1000 * phys.rotorRPM)));
     }
 
     // colisión (solo mientras vuela)
