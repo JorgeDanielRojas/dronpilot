@@ -1,0 +1,38 @@
+
+=== electric drone propeller ===
+  playOverlay: 20
+  clicks=20 nuevos=1 total=1
+
+=== quadcopter motor ===
+  playOverlay: 20
+  clicks=16 nuevos=1 total=2
+
+=== drone flying loop ===
+  goto fail 0: page.goto: Target page, context or browser has been closed
+  goto fail 1: page.goto: Target page, context or browser has been closed
+  goto fail 2: page.goto: Target page, context or browser has been closed
+  SKIP (goto)
+
+=== fpv drone ===
+  goto fail 0: page.goto: Target page, context or browser has been closed
+  goto fail 1: page.goto: Target page, context or browser has been closed
+  goto fail 2: page.goto: Target page, context or browser has been closed
+  SKIP (goto)
+
+=== drone hover ===
+  goto fail 0: page.goto: Target page, context or browser has been closed
+  goto fail 1: page.goto: Target page, context or browser has been closed
+  goto fail 2: page.goto: Target page, context or browser has been closed
+  SKIP (goto)
+
+=== brushless motor ===
+  goto fail 0: page.goto: Target page, context or browser has been closed
+  goto fail 1: page.goto: Target page, context or browser has been closed
+  goto fail 2: page.goto: Target page, context or browser has been closed
+  SKIP (goto)
+
+=== drone buzz ===
+  goto fail 0: page.goto: Target page, context or browser has been closed
+  goto fail 1: page.goto: Target page, context or browser has been closed
+  goto fail 2: page.goto: Target page, context or browser has been closed
+  SKIP (goto)

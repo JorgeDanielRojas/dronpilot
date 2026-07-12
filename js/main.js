@@ -3,7 +3,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 
-const VERSION = '0.11.1';   // v= para deploy/guard
+const VERSION = '0.12.0';   // v= para deploy/guard
 const $ = s => document.querySelector(s);
 const DRONE_R = 0.30;      // radio de colisión del dron (esfera)
 const PICKUP_R = 0.75;     // radio para recolectar un punto
@@ -56,12 +56,12 @@ const controls = new window.Controls({ mode: LS.get('ctl', 'touch') });
 const CRAFT_TUNE = {
   drone: {},
   coax: { maxSpeed: 6.0, fwdAccel: 8.6, drag: 1.5, yawMax: 1.7, yawAccel: 4.0, tiltMax: 0.46, rollFactor: 0.30, wobbleAmp: 0.2, riseDamp: 3.6, batterySec: 28, rotorIdleRPM: 18, rotorFullRPM: 46 },
-  bear: { maxSpeed: 6.5, fwdAccel: 9.5, drag: 1.45, yawMax: 1.9, yawAccel: 4.4, tiltMax: 0.5, rollFactor: 0.32, wobbleAmp: 0.26, riseDamp: 3.4, batterySec: 32, rotorIdleRPM: 22, rotorFullRPM: 52 },
+  bear: { maxSpeed: 6.5, fwdAccel: 9.5, drag: 1.45, yawMax: 1.9, yawAccel: 4.4, tiltMax: 0.78, rollFactor: 0.52, wobbleAmp: 0.48, riseDamp: 3.4, batterySec: 32, rotorIdleRPM: 22, rotorFullRPM: 52 },   // tilt/wobble fuertes: Jorge quiere que se MENEE
   fly: { maxSpeed: 5.6, fwdAccel: 8.0, drag: 1.6, yawMax: 2.0, yawAccel: 4.6, tiltMax: 0.42, rollFactor: 0.36, wobbleAmp: 0.34, riseDamp: 3.0, batterySec: 40, rotorIdleRPM: 10, rotorFullRPM: 22 },   // mariposa: flotona, aleteo = rotorRPM
 };
 // giro (rad) que pone la NARIZ del modelo mirando a −Z (dirección de vuelo). Se calibra con render.
 const _AXY = new THREE.Vector3(0, 1, 0);
-const CRAFT_YAW = { drone: Math.PI, coax: Math.PI, bear: Math.PI, fly: Math.PI };   // TODOS los GLB vienen con la nariz en +Z (medido con render de flechas) → 180°
+const CRAFT_YAW = { drone: Math.PI, coax: Math.PI, bear: 0, fly: Math.PI };   // GLB nariz en +Z (medido con render de flechas) → 180° para volar de frente; oso = 0: CARA a la cámara (Jorge quiere verle la cara al volar)
 let house = null, drone = null, rotors = [], wings = [], craft = LS.get('craft', 'drone'), levelIdx = 0, loadGen = 0;
 let state = 'pre', flightHeight = 2.5, tPrev = performance.now(), debris = [], fx = [];
 let _postWinCrashed = false;   // choque cosmético permitido UNA vez tras ganar (el dron no es invencible)
@@ -98,6 +98,23 @@ function applyWallpaper(url) {
 }
 
 // ---------- carga de la nave (GLB) ----------
+// textura de ruido para la pelusa del oso (alphaMap de las capas shell-fur) — 1 sola, cacheada
+let _furTex = null;
+function getFurTexture() {
+  if (!_furTex) {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 256;
+    const g = cv.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 24000; i++) {
+      const v = 90 + (Math.random() * 165 | 0);
+      g.fillStyle = 'rgb(' + v + ',' + v + ',' + v + ')';
+      g.fillRect((Math.random() * 256) | 0, (Math.random() * 256) | 0, 1, 1);
+    }
+    _furTex = new THREE.CanvasTexture(cv);
+    _furTex.wrapS = _furTex.wrapT = THREE.RepeatWrapping;
+    _furTex.repeat.set(2, 2);
+  }
+  return _furTex;
+}
 const loader = new GLTFLoader();
 function loadCraft(kind) {
   const SRC = {
@@ -155,18 +172,62 @@ function loadCraft(kind) {
         });
       });
     }
-    // OSO (Jorge): material ESPONJOSO (peluche: rugosidad total, cero metal) + una PROPELA CLONADA
-    // del propio dron montada en la parte alta de la espalda (la cervical) — "parte de otro modelo".
+    // OSO (Jorge): PELUCHE de verdad — sheen de terciopelo + PELUSA en capas (shell fur: copias del
+    // mesh infladas por la normal con alphaTest de ruido → silueta peluda) + propela clonada del dron.
+    // Mira a la CÁMARA (CRAFT_YAW.bear = 0): vuela de frente a nosotros, propela en la espalda (−Z).
     if (kind === 'bear') {
-      m.traverse(o => {
-        if (!o.isMesh || !o.material) return;
-        (Array.isArray(o.material) ? o.material : [o.material]).forEach(mt => { mt.roughness = 1; mt.metalness = 0; mt.needsUpdate = true; });
-      });
+      const furTex = getFurTexture();
+      const baseMeshes = [];
+      m.traverse(o => { if (o.isMesh && o.material) baseMeshes.push(o); });
+      const SHELLS = 6;
+      for (const o of baseMeshes) {
+        const mt0 = Array.isArray(o.material) ? o.material[0] : o.material;
+        if (mt0.transparent) continue;   // overlay de la boca (BLEND): se queda como viene, sin pelusa
+        const plushOpts = {
+          map: mt0.map || null, normalMap: mt0.normalMap || null, side: mt0.side,
+          color: mt0.color ? mt0.color.clone() : new THREE.Color(0xb5793f),
+          roughness: 1, metalness: 0, sheen: 1, sheenRoughness: 0.45, sheenColor: new THREE.Color(0xffe2b8),
+        };
+        o.material = new THREE.MeshPhysicalMaterial(plushOpts);
+        if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere();
+        if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+        const gb = o.geometry.boundingBox;
+        const furLen = o.geometry.boundingSphere.radius * 0.085;   // largo del pelo ∝ tamaño del mesh (unidades locales)
+        // el TORSO/BRAZOS del cuerpo van bajo el suéter: pelo solo del cuello para arriba (si no,
+        // atraviesa la ropa y la mancha de marrón). El suéter sí lleva pelusa completa.
+        const isBody = /body/i.test(mt0.name);
+        const furMinY = isBody ? gb.min.y + (gb.max.y - gb.min.y) * 0.62 : gb.min.y - 1;
+        const furMaxL = isBody ? 0.30 : 9;   // en el cuerpo, pelo SOLO sobre texels marrones (el hocico claro se ensuciaba)
+        for (let i = 1; i <= SHELLS; i++) {
+          const sm = new THREE.MeshPhysicalMaterial({ ...plushOpts, color: plushOpts.color.clone().multiplyScalar(1 + 0.04 * i), alphaMap: furTex, alphaTest: 0.24 + 0.50 * i / SHELLS });
+          const dist = furLen * i / SHELLS;
+          sm.onBeforeCompile = shd => {
+            shd.uniforms.furD = { value: dist }; shd.uniforms.furMinY = { value: furMinY }; shd.uniforms.furMaxL = { value: furMaxL };
+            shd.vertexShader = 'uniform float furD;\nuniform float furMinY;\nvarying float vFurOk;\n' + shd.vertexShader.replace('#include <begin_vertex>',
+              '#include <begin_vertex>\n\tvFurOk = step(furMinY, position.y);\n\ttransformed += objectNormal * furD * vFurOk;');
+            // sin pelo bajo el cuello, sobre texels oscuros (ojos/nariz: se embarraban en negro) ni
+            // sobre texels claros del cuerpo (hocico). diffuseColor ya está en espacio LINEAL
+            // (marrón cabeza ≈0.04 · ojos ≈0.002 · hocico ≈0.5)
+            shd.fragmentShader = 'varying float vFurOk;\nuniform float furMaxL;\n' + shd.fragmentShader.replace('#include <alphatest_fragment>',
+              'float furL = dot(diffuseColor.rgb, vec3(0.3333));\nif (vFurOk < 0.5 || furL < 0.012 || furL > furMaxL) discard;\n#include <alphatest_fragment>');
+          };
+          // clave ÚNICA por malla+capa: con clave compartida Three reusa el programa cacheado y NO
+          // llama onBeforeCompile en los demás materiales → furD queda sin subir (pelo invisible + z-fight)
+          sm.customProgramCacheKey = () => 'bearfur_' + o.name + '_' + i;
+          let sh;
+          if (o.isSkinnedMesh) { sh = new THREE.SkinnedMesh(o.geometry, sm); sh.bind(o.skeleton, o.bindMatrix); }
+          else sh = new THREE.Mesh(o.geometry, sm);
+          sh.position.copy(o.position); sh.quaternion.copy(o.quaternion); sh.scale.copy(o.scale);
+          sh.userData.noShadow = true; sh.frustumCulled = false;
+          o.parent.add(sh);
+        }
+      }
       const bb = new THREE.Box3().setFromObject(m); const bs = new THREE.Vector3(); bb.getSize(bs);
-      // CABEZA CAÍDA (Jorge: "rígida"): el oso trae esqueleto — doblar el cuello y la cabeza hacia adelante
+      // cabeza casi recta mirando al jugador (Jorge 2026-07-12 "de frente a mí" — la caída fuerte
+      // lo dejaba mirando el piso); un toque mínimo de inclinación para que no se vea tieso
       m.traverse(o => {
-        if (/^neck_/.test(o.name)) o.rotation.x += 0.22;
-        if (/^head_/.test(o.name)) o.rotation.x += 0.30;
+        if (/^neck_/.test(o.name)) o.rotation.x += 0.05;
+        if (/^head_/.test(o.name)) o.rotation.x += 0.07;
       });
       loader.load('models/drone.glb', (g2) => {
         if (gen !== loadGen) return;                 // NO disponer g2: el clone comparte geometría/materiales
@@ -178,10 +239,10 @@ function loadCraft(kind) {
         const targetD = bs.x * 0.85;                 // diámetro ≈ ancho de hombros
         rotor.scale.setScalar(targetD / (Math.max(ps.x, ps.z) || 1));
         // hub AFUERA del cuerpo (detrás de la espalda, no clavado en el cuello — Jorge) + mástil que
-        // sale de la espalda hasta el hub (se LEE el montaje)
-        const hub = new THREE.Vector3(0, bs.y * 0.14, bs.z * 0.62);
+        // sale de la espalda hasta el hub (se LEE el montaje). Espalda = −Z (el oso mira a la cámara).
+        const hub = new THREE.Vector3(0, bs.y * 0.14, -bs.z * 0.62);
         rotor.position.copy(hub);
-        const anchor = new THREE.Vector3(0, bs.y * 0.02, bs.z * 0.40);
+        const anchor = new THREE.Vector3(0, bs.y * 0.02, -bs.z * 0.40);
         const dirM = hub.clone().sub(anchor), lenM = dirM.length();
         const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.016, lenM, 8), new THREE.MeshStandardMaterial({ color: 0x555b64, metalness: 0.4 }));
         mast.position.copy(anchor.clone().add(hub).multiplyScalar(0.5));
@@ -197,7 +258,7 @@ function loadCraft(kind) {
     if (kind === 'fly') {
       const wingNodes = [];
       m.traverse(o => { if (/^wing[LR]$/.test(o.name)) wingNodes.push(o); });
-      const ROOT_Y = 1.58;   // altura de la RAÍZ del ala en coords del modelo (medida: cuerpo y≈1.0-2.3, raíz 1.54-1.62)
+      const ROOT_Y = 1.837;   // altura de la RAÍZ del ala en coords del modelo (mediana del borde raíz MEDIDA en la malla; aprobado Jorge 2026-07-12)
       for (const wn of wingNodes) {
         const parent = wn.parent;
         const piv = new THREE.Group(); parent.add(piv);
@@ -210,7 +271,7 @@ function loadCraft(kind) {
         wings.push(piv);
       }
     }
-    m.traverse(o => { if (o.isMesh) o.castShadow = true; });   // la nave PROYECTA sombra (cue de altura)
+    m.traverse(o => { if (o.isMesh) o.castShadow = !o.userData.noShadow; });   // la nave PROYECTA sombra (cue de altura); capas de pelusa NO (duplicarían el blob)
     tiltPivot.add(m);
     // EJE DE GIRO por rotor: el eje LOCAL que corresponde a la VERTICAL del mundo (un pivote del GLB
     // puede venir con ejes girados → rotateY a secas lo hace girar VERTICAL; caso propela, Jorge).
@@ -360,6 +421,26 @@ function explode(pos) {
 }
 // DESPIECE REAL: parte el dron en SUS mallas reales (rotores, brazos, cuerpo del GLB), no cubos genéricos.
 const _pv = new THREE.Vector3(), _pq = new THREE.Quaternion(), _ps = new THREE.Vector3();
+let _impactV = { x: 0, y: 0, z: 0 };   // velocidad del vuelo EN el impacto (endLevel la captura antes de congelar)
+// el choque según la nave: dron/heli/mariposa se DESPIEZAN; el OSO es PELUCHE (Jorge 2026-07-12):
+// cae ENTERO al piso y REBOTA con las cosas — una sola pieza de debris grande con colisión viva.
+function crashCraft() {
+  if (craft === 'bear') tumbleBear(); else { explodeReal(phys.pos); if (drone) drone.visible = false; }
+  _crashSrc = playOne('crash', 0.9, 0.40);
+}
+function tumbleBear() {
+  const tp = drone && drone.userData.tilt;
+  if (!tp || !drone.userData.model) { explode(phys.pos); return; }   // GLB aún no cargó
+  tp.updateWorldMatrix(true, true);
+  scene.attach(tp);   // el conjunto ENTERO (oso + propela + mástil) sale del holder conservando su pose
+  debris.push({
+    mesh: tp, R: 0.26, stay: true, life: 0,
+    v: { x: -_impactV.x * 0.55, y: Math.max(1.4, -_impactV.y * 0.4 + 1.2), z: -_impactV.z * 0.55 },   // rebote del golpe: atrás y arriba
+    w: { x: (Math.random() * 2 - 1) * 3.5, y: (Math.random() * 2 - 1) * 4.5, z: 0 },
+  });
+  rotors = []; wings = [];   // la propela viaja con el oso pero ya no gira (nave muerta)
+  popBurst(phys.pos.x, phys.pos.y, phys.pos.z, 0xffe08a);
+}
 function explodeReal(pos) {
   const model = drone && drone.userData.model;
   if (!model) { explode(pos); return; }               // fallback genérico si el GLB aún no cargó
@@ -391,16 +472,18 @@ function debrisHit(x, y, z, R) {
   return null;
 }
 function stepDebris(dt) {
-  const R = 0.07, REST = 0.45;   // radio de pieza · restitución del rebote
+  const REST = 0.45;   // restitución del rebote
   for (let i = debris.length - 1; i >= 0; i--) {
     const d = debris[i]; d.life += dt; d.v.y -= 9.8 * dt;
+    const R = d.R || 0.07;                        // radio por pieza (el oso entero usa 0.26)
     const p = d.mesh.position;
     // REBOTE contra paredes/objetos (Jorge 2026-07-11): probar el paso POR EJE y reflejar el eje que choca
     const nx = p.x + d.v.x * dt, ny = p.y + d.v.y * dt, nz = p.z + d.v.z * dt;
     if (debrisHit(nx, p.y, p.z, R)) { d.v.x *= -REST; d.w.y *= -0.7; } else p.x = nx;
     if (debrisHit(p.x, ny, p.z, R)) { d.v.y *= -REST; d.v.x *= 0.75; d.v.z *= 0.75; } else p.y = ny;
     if (debrisHit(p.x, p.y, nz, R)) { d.v.z *= -REST; d.w.x *= -0.7; } else p.z = nz;
-    if (p.y < 0.03) { p.y = 0.03; d.v.y *= -0.35; d.v.x *= 0.6; d.v.z *= 0.6; }   // piso
+    const fy = d.R ? d.R * 0.9 : 0.03;            // piso: el oso descansa sobre su radio, no hundido
+    if (p.y < fy) { p.y = fy; d.v.y *= -0.35; d.v.x *= 0.6; d.v.z *= 0.6; if (d.stay) { d.w.x *= 0.7; d.w.y *= 0.7; } }
     d.mesh.rotation.x += d.w.x * dt; d.mesh.rotation.y += d.w.y * dt;
     // ⭐ Las PIEZAS también RECOGEN puntos y REVIENTAN globos después del choque (Jorge 2026-07-11)
     if (state === 'lose' && house) {
@@ -422,7 +505,7 @@ function stepDebris(dt) {
         setTapLayer();
       }
     }
-    if (d.life > 2.4 && !d.hero) { scene.remove(d.mesh); disposeMesh(d.mesh); debris.splice(i, 1); }
+    if (d.life > 2.4 && !d.hero && !d.stay) { scene.remove(d.mesh); disposeMesh(d.mesh); debris.splice(i, 1); }   // el peluche (stay) se queda tirado
   }
 }
 
@@ -610,6 +693,7 @@ function endLevel(win) {
   state = win ? 'win' : 'lose'; stopLoop();
   if (!win) {   // el dron EXPLOTÓ: congelar la física — si sigue con inercia, el "fantasma" invisible
     // atraviesa paredes y la cámara (que persigue phys.pos) termina detrás de muros, lejos del despiece
+    _impactV = { x: phys.vel.x, y: phys.vel.y, z: phys.vel.z };   // guardar ANTES de congelar (rebote del peluche)
     phys.speed = 0; phys.yawVel = 0; phys.vel = { x: 0, y: 0, z: 0 };
   }
   $('#touch').classList.add('hidden');                                        // fuera los controles de vuelo
@@ -630,7 +714,7 @@ function endLevel(win) {
   } else {
     // NO tapamos la pantalla: se VE el choque — el dron se parte en SUS pedazos reales y la animación sigue.
     const noBattery = phys.battery <= 0;
-    explodeReal(phys.pos); if (drone) drone.visible = false; _crashSrc = playOne('crash', 0.9, 0.40);
+    crashCraft();
     showBanner(noBattery ? '🔋 Sin batería' : '💥 ¡Chocaste!', 'Toca para reintentar');
   }
   $('#timer').classList.add('hidden');
@@ -660,6 +744,12 @@ function frame() {
     phys.t.midHeight = effFH(phys.pos.x, phys.pos.z);   // menos aire arriba → vuela más pegado al piso local
     phys.update(dt, { thr: inp.thr, yaw: inp.yaw, groundY });
 
+    // el PELUCHE que rebota manda: phys.pos lo sigue (ya no integra tras el choque) → la cámara,
+    // el keepDroneInView y los muros-transparentes siguen al oso, nunca lo pierden de cuadro
+    if (state === 'lose' || state === 'win') {
+      const bt = debris.find(d => d.stay);
+      if (bt) { phys.pos.x = bt.mesh.position.x; phys.pos.y = bt.mesh.position.y; phys.pos.z = bt.mesh.position.z; }
+    }
     // aplicar a la malla
     if (drone) {
       drone.position.set(phys.pos.x, phys.pos.y, phys.pos.z);
@@ -699,7 +789,8 @@ function frame() {
       // El win YA contó (banner/score intactos) → el choque es cosmético, no cambia el resultado.
       if (hitWorld(phys.pos)) {
         _postWinCrashed = true;
-        explodeReal(phys.pos); if (drone) drone.visible = false; _crashSrc = playOne('crash', 0.9, 0.40);
+        _impactV = { x: phys.vel.x, y: phys.vel.y, z: phys.vel.z };
+        crashCraft();
       }
     }
 
