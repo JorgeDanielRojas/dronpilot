@@ -671,17 +671,22 @@
     },
     { // 48 — LAS AGUJAS (innovador): bosque de TORRES finas del piso al techo — slalom puro en 3D, colisión
       // de cilindro exacta. Primer nivel donde el peligro es el BOSQUE, no el muro.
+      // AGRANDADO (Jorge 2026-07-12: "está bueno pero se llega muy rápido vs la pila"): sala más larga
+      // (19→28) y más torres (12→22) → slalom largo, la pila cuenta.
       name: 'Las agujas', ceiling: 3.4, flightHeight: 1.4,
-      rects: [{ x: 0, z: 0, w: 13, d: 19 }],
+      rects: [{ x: 0, z: 0, w: 13, d: 28 }],
       columns: [
-        { x: -1.8, z: 7, r: 0.4, h: 3.2 }, { x: 1.6, z: 6, r: 0.4, h: 3.2 }, { x: -0.5, z: 4.6, r: 0.4, h: 3.2 },
-        { x: 2.8, z: 3.4, r: 0.4, h: 3.2 }, { x: -2.6, z: 3, r: 0.4, h: 3.2 }, { x: 0.6, z: 1.8, r: 0.4, h: 3.2 },
-        { x: -1.2, z: -0.2, r: 0.4, h: 3.2 }, { x: 2.2, z: -1, r: 0.4, h: 3.2 }, { x: -3, z: -2.2, r: 0.4, h: 3.2 },
-        { x: 0, z: -3.4, r: 0.4, h: 3.2 }, { x: 1.8, z: -5, r: 0.4, h: 3.2 }, { x: -1.6, z: -6.2, r: 0.4, h: 3.2 },
+        { x: -1.8, z: 12, r: 0.4, h: 3.2 }, { x: 1.6, z: 11, r: 0.4, h: 3.2 }, { x: -0.5, z: 9.6, r: 0.4, h: 3.2 },
+        { x: 2.8, z: 8.4, r: 0.4, h: 3.2 }, { x: -2.6, z: 8, r: 0.4, h: 3.2 }, { x: 0.6, z: 6.8, r: 0.4, h: 3.2 },
+        { x: -1.2, z: 4.8, r: 0.4, h: 3.2 }, { x: 2.2, z: 4, r: 0.4, h: 3.2 }, { x: -3, z: 3, r: 0.4, h: 3.2 },
+        { x: 0, z: 1.6, r: 0.4, h: 3.2 }, { x: 1.8, z: 0, r: 0.4, h: 3.2 }, { x: -1.6, z: -0.8, r: 0.4, h: 3.2 },
+        { x: 2.8, z: -2, r: 0.4, h: 3.2 }, { x: -2.8, z: -2.4, r: 0.4, h: 3.2 }, { x: 0.5, z: -3.4, r: 0.4, h: 3.2 },
+        { x: -1.4, z: -5, r: 0.4, h: 3.2 }, { x: 2.2, z: -5.6, r: 0.4, h: 3.2 }, { x: -3, z: -6.4, r: 0.4, h: 3.2 },
+        { x: 0.4, z: -7.4, r: 0.4, h: 3.2 }, { x: 1.9, z: -9, r: 0.4, h: 3.2 }, { x: -1.7, z: -9.6, r: 0.4, h: 3.2 }, { x: -0.3, z: -11, r: 0.4, h: 3.2 },
       ],
-      start: { x: 0, z: 8.6 },
-      goal: { x: 0, y: 1.4, z: -8.3 },
-      points: [{ x: 0.4, z: 5.6 }, { x: -1.5, z: 2.2 }, { x: 1, z: -2.2 }],
+      start: { x: 0, z: 13.2 },
+      goal: { x: 0, y: 1.4, z: -12.8 },
+      points: [{ x: 0.5, z: 10.5 }, { x: 1, z: 2.8 }, { x: -0.9, z: -7.9 }],
     },
     { // 49 — EL ZIGURAT (familia de subidas): sube en U — rampa OESTE al piso 1, vuelta por el rellano
       // norte (con ventilador), rampa ESTE que sube AL SUR hasta el piso 2 con la meta.
@@ -715,6 +720,200 @@
         { type: 'pendulum', x: -5.9, z: 0, y: 2.4, len: 1.1, axis: 'x', swing: 0.6, speed: 1.5 },
         { type: 'geyser', x: 0, z: -5.9, zone: { minx: -0.8, maxx: 0.8, minz: -6.7, maxz: -5.1 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 0 },
         { type: 'geyser', x: 5.9, z: 0, zone: { minx: 5.1, maxx: 6.7, minz: -0.8, maxz: 0.8 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 1.5 },
+      ],
+    },
+    // ========================================================================
+    // 51–60 — GRAN FINAL (Jorge 2026-07-12: "sé creativo, cambia la forma entera del mundo y la longitud;
+    // proporción de obstáculos, y que la PILA sea reto — no llegar sobrado"). Mundos GRANDES, largos.
+    // ========================================================================
+    { // 51 — LA GRAN TRAVESÍA (familia largo-recto con 52): corredor larguísimo (56 m) de olas de altura
+      // + slalom de lámparas. La pila apenas alcanza: hay que ir fino y sin frenar.
+      name: 'La gran travesía', ceiling: 5.2, flightHeight: 1.4,
+      rects: [{ x: 0, z: 0, w: 9, d: 56 }],
+      terrain: [
+        { type: 'rampz', minx: -4.5, maxx: 4.5, z0: 22, z1: 16, h0: 0, h1: 2.2 },
+        { type: 'plateau', minx: -4.5, maxx: 4.5, minz: 10, maxz: 16, h: 2.2 },
+        { type: 'rampz', minx: -4.5, maxx: 4.5, z0: 10, z1: 4, h0: 2.2, h1: 0 },
+        { type: 'rampz', minx: -4.5, maxx: 4.5, z0: -4, z1: -10, h0: 0, h1: 2.6 },
+        { type: 'plateau', minx: -4.5, maxx: 4.5, minz: -16, maxz: -10, h: 2.6 },
+        { type: 'rampz', minx: -4.5, maxx: 4.5, z0: -16, z1: -22, h0: 2.6, h1: 0 },
+      ],
+      start: { x: 0, z: 26 },
+      goal: { x: 0, y: 1.4, z: -26 },
+      points: [{ x: 1.6, z: 19 }, { x: -1.6, z: 1 }, { x: 1.6, z: -19 }],
+      obstacles: [
+        { type: 'lamp', x: 2.2, z: 23 }, { type: 'lamp', x: -2.2, z: 3 },
+        { type: 'lamp', x: 2.2, z: -2 }, { type: 'lamp', x: -2.2, z: -23 },
+      ],
+    },
+    { // 52 — EL SERPENTÍN (familia largo con 51): mismo largo pero en ZIGZAG por muros — no ves la meta,
+      // el recorrido dobla 4 veces; el viento de un soplador te empuja en el tramo central.
+      name: 'El serpentín', ceiling: 3.4, flightHeight: 1.4,
+      rects: [
+        { x: 0, z: 10, w: 12, d: 4 },     // tramo 1 (arriba, ancho)
+        { x: 5, z: 4, w: 4, d: 16 },      // baja por la derecha
+        { x: 0, z: -2, w: 12, d: 4 },     // cruza a la izquierda
+        { x: -5, z: -8, w: 4, d: 16 },    // baja por la izquierda
+        { x: 0, z: -14, w: 12, d: 4 },    // tramo final
+      ],
+      start: { x: -5, z: 10 },
+      goal: { x: 5, y: 1.4, z: -14 },
+      points: [{ x: 5, z: 9 }, { x: -4.5, z: -2 }, { x: -5, z: -13 }],
+      obstacles: [
+        { type: 'lamp', x: 5, z: 1 }, { type: 'teddy', x: -5, z: -3 },
+        { type: 'lamp', x: -5, z: -6 }, { type: 'teddy', x: 4, z: 10 },
+      ],
+      movers: [{ type: 'blower', x: 0, z: -2, y: 0.6, zone: { minx: -6, maxx: 6, minz: -4, maxz: 0 }, f: [-2.2, 0, 0] }],
+    },
+    { // 53 — EL BOSQUE DENSO (familia de columnas con 48/54): el "agujas" en GRANDE — 26 torres en una sala
+      // de 16×22; slalom largo y cerrado, la pila cuenta. Proporción cerrada: poco aire entre torres.
+      name: 'El bosque denso', ceiling: 3.6, flightHeight: 1.4,
+      rects: [{ x: 0, z: 0, w: 16, d: 24 }],
+      columns: [
+        { x: -5, z: 9, r: 0.45, h: 3.4 }, { x: -1.5, z: 9.5, r: 0.45, h: 3.4 }, { x: 2.5, z: 9, r: 0.45, h: 3.4 }, { x: 5.5, z: 8, r: 0.45, h: 3.4 },
+        { x: -3.5, z: 6.5, r: 0.45, h: 3.4 }, { x: 0.5, z: 6, r: 0.45, h: 3.4 }, { x: 4, z: 5.5, r: 0.45, h: 3.4 },
+        { x: -6, z: 4, r: 0.45, h: 3.4 }, { x: -2, z: 3.5, r: 0.45, h: 3.4 }, { x: 2, z: 3, r: 0.45, h: 3.4 }, { x: 5.5, z: 2.5, r: 0.45, h: 3.4 },
+        { x: -4.5, z: 1, r: 0.45, h: 3.4 }, { x: -0.5, z: 0.5, r: 0.45, h: 3.4 }, { x: 3.5, z: 0, r: 0.45, h: 3.4 },
+        { x: -6, z: -2, r: 0.45, h: 3.4 }, { x: -2.5, z: -2.5, r: 0.45, h: 3.4 }, { x: 1, z: -3, r: 0.45, h: 3.4 }, { x: 5, z: -3, r: 0.45, h: 3.4 },
+        { x: -4, z: -5, r: 0.45, h: 3.4 }, { x: 0, z: -5.5, r: 0.45, h: 3.4 }, { x: 3.5, z: -6, r: 0.45, h: 3.4 },
+        { x: -6, z: -8, r: 0.45, h: 3.4 }, { x: -2, z: -8.5, r: 0.45, h: 3.4 }, { x: 2, z: -9, r: 0.45, h: 3.4 }, { x: 5.5, z: -8.5, r: 0.45, h: 3.4 },
+        { x: -0.5, z: -10.5, r: 0.45, h: 3.4 },
+      ],
+      start: { x: 0, z: 11 },
+      goal: { x: 1.8, y: 1.4, z: -11.3 },
+      points: [{ x: -3.5, z: 8 }, { x: 5.2, z: 0.5 }, { x: -3.5, z: -7 }],
+    },
+    { // 54 — EL ENJAMBRE VIVO (familia de columnas con 53): menos torres pero MÓVILES — 2 ventiladores y un
+      // péndulo entre los pilares; el hueco seguro cambia. Bosque + trampas que se mueven.
+      name: 'El enjambre vivo', ceiling: 4.0, flightHeight: 1.4,
+      rects: [{ x: 0, z: 0, w: 14, d: 22 }],
+      columns: [
+        { x: -4, z: 8, r: 0.45, h: 3.8 }, { x: 3, z: 8, r: 0.45, h: 3.8 },
+        { x: 0, z: 4, r: 0.45, h: 3.8 }, { x: -5, z: 2, r: 0.45, h: 3.8 }, { x: 5, z: 2, r: 0.45, h: 3.8 },
+        { x: -3, z: -3, r: 0.45, h: 3.8 }, { x: 3, z: -3, r: 0.45, h: 3.8 },
+        { x: 0, z: -6, r: 0.45, h: 3.8 }, { x: -5, z: -8, r: 0.45, h: 3.8 }, { x: 5, z: -8, r: 0.45, h: 3.8 },
+      ],
+      start: { x: 0, z: 10 },
+      goal: { x: 0, y: 1.4, z: -10.2 },
+      points: [{ x: 4.5, z: 6 }, { x: -4.5, z: 0 }, { x: 4.5, z: -6 }],
+      movers: [
+        { type: 'fan', x: -2, z: 5.5, y: 1.4, r: 0.9, axis: 'x', speed: 1.2, baseY: 1.4 },
+        { type: 'fan', x: 2, z: -4.5, y: 1.4, r: 0.9, axis: 'x', speed: -1.2, baseY: 1.4 },
+        { type: 'pendulum', x: 0, z: 1, y: 2.4, len: 1.2, axis: 'z', swing: 0.6, speed: 1.4 },
+      ],
+    },
+    { // 55 — LA GRAN MONTAÑA (familia terreno-alto con 56): subir una ladera larga hasta una cima alta y
+      // BAJAR por el otro lado — up-and-over. Techo alto; la pila se va en la subida.
+      name: 'La gran montaña', ceiling: 8.0, flightHeight: 1.4,
+      rects: [{ x: 0, z: 0, w: 9, d: 40 }],
+      terrain: [
+        { type: 'rampz', minx: -4.5, maxx: 4.5, z0: 16, z1: 2, h0: 0, h1: 5 },
+        { type: 'plateau', minx: -4.5, maxx: 4.5, minz: -2, maxz: 2, h: 5 },
+        { type: 'rampz', minx: -4.5, maxx: 4.5, z0: -2, z1: -16, h0: 5, h1: 0 },
+      ],
+      start: { x: 0, z: 18 },
+      goal: { x: 0, y: 1.4, z: -18 },
+      points: [{ x: 1.6, z: 9 }, { x: 0, z: 0 }, { x: -1.6, z: -9 }],
+      obstacles: [{ type: 'lamp', x: 2, z: 15 }, { type: 'lamp', x: -2, z: -15 }],
+    },
+    { // 56 — EL DESCENSO LARGO (familia terreno-alto con 55): sales ARRIBA del todo (plateau alto) y bajas
+      // una escalera de mesetas larga; puntos en cada rellano, viento cruzado que empuja al vacío lateral.
+      name: 'El descenso largo', ceiling: 8.4, flightHeight: 1.4,
+      rects: [{ x: 0, z: 0, w: 10, d: 44 }],
+      terrain: [
+        { type: 'plateau', minx: -5, maxx: 5, minz: 18, maxz: 22, h: 5.6 },
+        { type: 'rampz', minx: -5, maxx: 5, z0: 18, z1: 12, h0: 5.6, h1: 4.2 },
+        { type: 'plateau', minx: -5, maxx: 5, minz: 8, maxz: 12, h: 4.2 },
+        { type: 'rampz', minx: -5, maxx: 5, z0: 8, z1: 2, h0: 4.2, h1: 2.8 },
+        { type: 'plateau', minx: -5, maxx: 5, minz: -2, maxz: 2, h: 2.8 },
+        { type: 'rampz', minx: -5, maxx: 5, z0: -2, z1: -8, h0: 2.8, h1: 1.4 },
+        { type: 'plateau', minx: -5, maxx: 5, minz: -12, maxz: -8, h: 1.4 },
+        { type: 'rampz', minx: -5, maxx: 5, z0: -12, z1: -18, h0: 1.4, h1: 0 },
+      ],
+      start: { x: 0, z: 20 },
+      goal: { x: 0, y: 1.4, z: -20 },
+      points: [{ x: 0, z: 10 }, { x: 0, z: 0 }, { x: 0, z: -10 }],
+      movers: [{ type: 'blower', x: 4.5, z: 5, y: 4, zone: { minx: -5, maxx: 5, minz: -2, maxz: 12 }, f: [-2, 0, 0] }],
+    },
+    { // 57 — EL GRAN TABLERO (familia géiseres con 58): el tablero de ajedrez de géiseres, pero 4×4 (16) en
+      // una sala grande — leer el patrón alternado a lo largo de todo el cruce.
+      name: 'El gran tablero', ceiling: 3.6, flightHeight: 1.4,
+      rects: [{ x: 0, z: 0, w: 15, d: 22 }],
+      start: { x: 0, z: 9.5 },
+      goal: { x: 0, y: 1.4, z: -9.5 },
+      points: [{ x: -1.8, z: 4.5 }, { x: 1.8, z: 0 }, { x: -1.8, z: -4.5 }],
+      movers: [
+        { type: 'geyser', x: -4.5, z: 6, zone: { minx: -5.3, maxx: -3.7, minz: 5.2, maxz: 6.8 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 0 },
+        { type: 'geyser', x: -1.5, z: 6, zone: { minx: -2.3, maxx: -0.7, minz: 5.2, maxz: 6.8 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 1.5 },
+        { type: 'geyser', x: 1.5, z: 6, zone: { minx: 0.7, maxx: 2.3, minz: 5.2, maxz: 6.8 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 0 },
+        { type: 'geyser', x: 4.5, z: 6, zone: { minx: 3.7, maxx: 5.3, minz: 5.2, maxz: 6.8 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 1.5 },
+        { type: 'geyser', x: -4.5, z: 2, zone: { minx: -5.3, maxx: -3.7, minz: 1.2, maxz: 2.8 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 1.5 },
+        { type: 'geyser', x: -1.5, z: 2, zone: { minx: -2.3, maxx: -0.7, minz: 1.2, maxz: 2.8 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 0 },
+        { type: 'geyser', x: 1.5, z: 2, zone: { minx: 0.7, maxx: 2.3, minz: 1.2, maxz: 2.8 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 1.5 },
+        { type: 'geyser', x: 4.5, z: 2, zone: { minx: 3.7, maxx: 5.3, minz: 1.2, maxz: 2.8 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 0 },
+        { type: 'geyser', x: -4.5, z: -2, zone: { minx: -5.3, maxx: -3.7, minz: -2.8, maxz: -1.2 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 0 },
+        { type: 'geyser', x: -1.5, z: -2, zone: { minx: -2.3, maxx: -0.7, minz: -2.8, maxz: -1.2 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 1.5 },
+        { type: 'geyser', x: 1.5, z: -2, zone: { minx: 0.7, maxx: 2.3, minz: -2.8, maxz: -1.2 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 0 },
+        { type: 'geyser', x: 4.5, z: -2, zone: { minx: 3.7, maxx: 5.3, minz: -2.8, maxz: -1.2 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 1.5 },
+        { type: 'geyser', x: -4.5, z: -6, zone: { minx: -5.3, maxx: -3.7, minz: -6.8, maxz: -5.2 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 1.5 },
+        { type: 'geyser', x: -1.5, z: -6, zone: { minx: -2.3, maxx: -0.7, minz: -6.8, maxz: -5.2 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 0 },
+        { type: 'geyser', x: 1.5, z: -6, zone: { minx: 0.7, maxx: 2.3, minz: -6.8, maxz: -5.2 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 1.5 },
+        { type: 'geyser', x: 4.5, z: -6, zone: { minx: 3.7, maxx: 5.3, minz: -6.8, maxz: -5.2 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 0 },
+      ],
+    },
+    { // 58 — LA TORMENTA LARGA (familia caos con 59/60): corredor largo con de TODO espaciado — cañón
+      // giratorio, viento en contra, péndulo y géiseres; sobrevivir toda la travesía con la pila justa.
+      name: 'La tormenta larga', ceiling: 5.0, flightHeight: 1.4,
+      rects: [{ x: 0, z: 0, w: 10, d: 40 }],
+      start: { x: 0, z: 18 },
+      goal: { x: 0, y: 1.4, z: -18 },
+      points: [{ x: 2, z: 10 }, { x: -2, z: 0 }, { x: 2, z: -10 }],
+      movers: [
+        { type: 'cannon', x: 0, z: 13, aim: 90 * Math.PI / 180, v0: 6.5, period: 1.8, rotate: 0.5, h0: 2.2 },
+        { type: 'blower', x: 4.5, z: 5, y: 0.6, zone: { minx: -5, maxx: 5, minz: 2, maxz: 8 }, f: [0, 0, 2.4] },
+        { type: 'pendulum', x: 0, z: -2, y: 2.4, len: 1.2, axis: 'x', swing: 0.62, speed: 1.5 },
+        { type: 'geyser', x: -2.5, z: -8, zone: { minx: -3.3, maxx: -1.7, minz: -8.8, maxz: -7.2 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 0 },
+        { type: 'geyser', x: 2.5, z: -8, zone: { minx: 1.7, maxx: 3.3, minz: -8.8, maxz: -7.2 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 1.5 },
+      ],
+    },
+    { // 59 — EL COLOSO (familia caos con 58): el gran anillo — vuelta COMPLETA obligada por barrotes, con
+      // manecilla de cañón al centro, viento y péndulos. Más grande que "La tormenta perfecta".
+      name: 'El coloso', ceiling: 5.0, flightHeight: 1.4,
+      rects: [{ x: 0, z: 0, w: 22, d: 22 }],
+      ring: {
+        cx: 0, cz: 0, rIn: 5.0, rOut: 9.2, h: 2.0,
+        posts: [{ x: 1.7, z: 5.3 }, { x: 2.0, z: 6.2 }, { x: 2.3, z: 7.1 }, { x: 2.6, z: 8.0 }],
+      },
+      start: { x: 0, z: 7.2 },
+      goal: { x: 3.3, y: 1.6, z: 6.4 },
+      points: [{ x: -5.1, z: 5.1 }, { x: -7.2, z: 0 }, { x: 0, z: -7.2 }, { x: 7.2, z: 0 }, { x: 5.1, z: 5.1 }],
+      movers: [
+        { type: 'cannon', x: 0, z: 0, aim: 90 * Math.PI / 180, v0: 7.5, period: 2.0, rotate: 0.5, h0: 2.4 },
+        { type: 'pendulum', x: -7, z: 0, y: 2.6, len: 1.2, axis: 'x', swing: 0.6, speed: 1.5 },
+        { type: 'pendulum', x: 7, z: 0, y: 2.6, len: 1.2, axis: 'x', swing: 0.6, speed: 1.4 },
+        { type: 'blower', x: 0, z: -8, y: 0.6, zone: { minx: -3, maxx: 3, minz: -9, maxz: -6 }, f: [2.2, 0, 0] },
+      ],
+    },
+    { // 60 — EL FIN DEL MUNDO (FINAL absoluto): la travesía más larga (52 m) que baja de una cima alta,
+      // cruza un bosque de torres y termina en un tramo de géiseres. Todo el juego en un solo mundo.
+      name: 'El fin del mundo', ceiling: 8.6, flightHeight: 1.4,
+      rects: [{ x: 0, z: 0, w: 11, d: 52 }],
+      terrain: [
+        { type: 'plateau', minx: -5.5, maxx: 5.5, minz: 22, maxz: 25, h: 5.5 },
+        { type: 'rampz', minx: -5.5, maxx: 5.5, z0: 22, z1: 14, h0: 5.5, h1: 0 },
+      ],
+      columns: [
+        { x: -3, z: 8, r: 0.45, h: 3.4 }, { x: 3, z: 8, r: 0.45, h: 3.4 },
+        { x: 0, z: 4, r: 0.45, h: 3.4 }, { x: -3.5, z: 1, r: 0.45, h: 3.4 }, { x: 3.5, z: 1, r: 0.45, h: 3.4 },
+        { x: 0, z: -3, r: 0.45, h: 3.4 }, { x: -3, z: -6, r: 0.45, h: 3.4 }, { x: 3, z: -6, r: 0.45, h: 3.4 },
+      ],
+      start: { x: 0, z: 24 },
+      goal: { x: 0, y: 1.4, z: -24 },
+      points: [{ x: 0, z: 16 }, { x: 3.5, z: -1.5 }, { x: 0, z: -16 }],
+      movers: [
+        { type: 'geyser', x: -3, z: -12, zone: { minx: -3.8, maxx: -2.2, minz: -12.8, maxz: -11.2 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 0 },
+        { type: 'geyser', x: 0, z: -14, zone: { minx: -0.8, maxx: 0.8, minz: -14.8, maxz: -13.2 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 1.5 },
+        { type: 'geyser', x: 3, z: -12, zone: { minx: 2.2, maxx: 3.8, minz: -12.8, maxz: -11.2 }, f: [0, 3.4, 0], period: 3, duty: 0.5, phase: 0 },
       ],
     },
   ];

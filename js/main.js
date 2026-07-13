@@ -3,7 +3,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 
-const VERSION = '0.13.2';   // v= para deploy/guard
+const VERSION = '0.14.0';   // v= para deploy/guard
 const $ = s => document.querySelector(s);
 const DRONE_R = 0.30;      // radio de colisión del dron (esfera)
 const PICKUP_R = 1.0;      // radio para recolectar un punto (0.75→1.0: costaba agarrarlos, Jorge 2026-07-12)
@@ -707,7 +707,7 @@ function onTap() {
   if (performance.now() < _tapArm) return;
   if (state === 'ready') doTakeoff();
   else if (state === 'lose') { if (drone) drone.visible = true; buildLevel(levelIdx); }
-  else if (state === 'win') { if (drone) drone.visible = true; levelIdx = levelIdx >= 49 ? levelIdx : levelIdx + 1; LS.set('unlocked', Math.max(LS.get('unlocked', 0), levelIdx)); buildLevel(levelIdx); }
+  else if (state === 'win') { if (drone) drone.visible = true; levelIdx = levelIdx >= 59 ? levelIdx : levelIdx + 1; LS.set('unlocked', Math.max(LS.get('unlocked', 0), levelIdx)); buildLevel(levelIdx); }
 }
 
 function doTakeoff() {
