@@ -3,7 +3,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 
-const VERSION = '0.13.0';   // v= para deploy/guard
+const VERSION = '0.13.1';   // v= para deploy/guard
 const $ = s => document.querySelector(s);
 const DRONE_R = 0.30;      // radio de colisión del dron (esfera)
 const PICKUP_R = 1.0;      // radio para recolectar un punto (0.75→1.0: costaba agarrarlos, Jorge 2026-07-12)
@@ -57,7 +57,7 @@ const CRAFT_TUNE = {
   drone: {},
   coax: { maxSpeed: 6.0, fwdAccel: 8.6, drag: 1.5, yawMax: 1.7, yawAccel: 4.0, tiltMax: 0.46, rollFactor: 0.30, wobbleAmp: 0.2, riseDamp: 3.6, batterySec: 28, rotorIdleRPM: 18, rotorFullRPM: 46 },
   bear: { maxSpeed: 6.5, fwdAccel: 9.5, drag: 1.45, yawMax: 1.9, yawAccel: 4.4, tiltMax: 0.78, rollFactor: 0.52, wobbleAmp: 0.48, riseDamp: 3.4, batterySec: 32, rotorIdleRPM: 22, rotorFullRPM: 52 },   // tilt/wobble fuertes: Jorge quiere que se MENEE
-  fly: { maxSpeed: 5.6, fwdAccel: 8.0, drag: 1.6, yawMax: 2.0, yawAccel: 4.6, tiltMax: 0.42, rollFactor: 0.36, wobbleAmp: 0.34, riseDamp: 3.0, batterySec: 40, rotorIdleRPM: 10, rotorFullRPM: 11 },   // mariposa: flotona, aleteo = rotorRPM (máx a la mitad, Jorge 2026-07-12)
+  fly: { maxSpeed: 5.6, fwdAccel: 8.0, drag: 1.6, yawMax: 2.0, yawAccel: 4.6, tiltMax: 0.42, rollFactor: 0.36, wobbleAmp: 0.34, riseDamp: 3.0, batterySec: 40, rotorIdleRPM: 12.5, rotorFullRPM: 13.75 },   // mariposa: flotona, aleteo = rotorRPM (mitad y luego ×1.25, Jorge 2026-07-12)
 };
 // giro (rad) que pone la NARIZ del modelo mirando a −Z (dirección de vuelo). Se calibra con render.
 const _AXY = new THREE.Vector3(0, 1, 0);
@@ -270,6 +270,9 @@ function loadCraft(kind) {
         const pq = new THREE.Quaternion(); piv.getWorldQuaternion(pq);
         piv.userData.axis = new THREE.Vector3(0, 0, 1).applyQuaternion(pq.invert()).normalize();   // eje del cuerpo en frame local
         piv.userData.side = wn.name === 'wingL' ? 1 : -1;
+        // POSE INICIAL = base del aleteo (0.14): en ready el aleteo no corre y sin esto las alas quedaban
+        // en ángulo 0 (caídas/planas, "despegadas del cuerpo", Jorge). Con 0.14 nacen en el diedro pegado.
+        piv.quaternion.setFromAxisAngle(piv.userData.axis, piv.userData.side * 0.14);
         wings.push(piv);
       }
     }
