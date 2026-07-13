@@ -3,7 +3,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 
-const VERSION = '0.13.1';   // v= para deploy/guard
+const VERSION = '0.13.2';   // v= para deploy/guard
 const $ = s => document.querySelector(s);
 const DRONE_R = 0.30;      // radio de colisión del dron (esfera)
 const PICKUP_R = 1.0;      // radio para recolectar un punto (0.75→1.0: costaba agarrarlos, Jorge 2026-07-12)
@@ -324,8 +324,12 @@ function buildLevel(idx) {
   if (drone) { scene.remove(drone); disposeGroup(drone); }      // libera GPU del dron viejo (fuga cazada por review)
   drone = loadCraft(craft);
   scene.add(drone);
-  phys.reset({ x: house.start.x, y: house.floorY, z: house.start.z });
-  drone.position.set(house.start.x, house.floorY, house.start.z);
+  // spawnear SOBRE el terreno local (no en floorY): en niveles con plateau alto en el spawn (43 "La gran
+  // bajada", 44) el dron nacía 6 m BAJO el terreno y al despegar subía todo eso + inercia → chocaba el techo
+  // y explotaba al comenzar (Jorge). En niveles planos terr(start)=0=floorY → sin cambio.
+  const startY = terr(house.start.x, house.start.z);
+  phys.reset({ x: house.start.x, y: startY, z: house.start.z });
+  drone.position.set(house.start.x, startY, house.start.z);
   camYaw = 0;
   state = 'ready';
   _lowWarned = false; _postWinCrashed = false; _heroPiece = null;
