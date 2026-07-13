@@ -3,7 +3,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 
-const VERSION = '0.14.0';   // v= para deploy/guard
+const VERSION = '0.15.0';   // v= para deploy/guard
 const $ = s => document.querySelector(s);
 const DRONE_R = 0.30;      // radio de colisión del dron (esfera)
 const PICKUP_R = 1.0;      // radio para recolectar un punto (0.75→1.0: costaba agarrarlos, Jorge 2026-07-12)
@@ -337,6 +337,7 @@ function buildLevel(idx) {
   $('#levelName').textContent = 'Nivel ' + (idx + 1) + ' · ' + house.name;
   $('#touch').classList.add('hidden');
   $('#timer').classList.add('hidden');
+  $('#rate').classList.add('hidden');
   showBanner('', '');       // sin botón: toca la pantalla para volar
   setTapLayer();
   updateBattery();
@@ -699,6 +700,10 @@ function renderBoard(list, level, myTime, myName) {
   el.innerHTML = rows; el.style.display = 'inline-block';
 }
 function hideBanner() { $('#banner').classList.add('hidden'); }
+// ---- calificación del nivel: 5 estrellas (SOLO guarda la opinión por nivel en dron_rate<idx>; no afecta nada más) ----
+function paintRate(n) { document.querySelectorAll('#rate button').forEach(b => b.classList.toggle('on', +b.dataset.n <= n)); }
+function showRate() { paintRate(LS.get('rate' + levelIdx, 0)); $('#rate').classList.remove('hidden'); }
+document.querySelectorAll('#rate button').forEach(b => b.addEventListener('click', () => { const n = +b.dataset.n; LS.set('rate' + levelIdx, n); paintRate(n); }));
 function setTapLayer() { $('#tapLayer').style.pointerEvents = (state === 'ready' || state === 'win' || state === 'lose') ? 'auto' : 'none'; }
 let _tapArm = 0;   // pequeña guarda: no reintentar por el mismo toque del choque
 function onTap() {
@@ -752,6 +757,7 @@ function endLevel(win) {
   $('#timer').classList.add('hidden');
   _tapArm = performance.now() + (win ? 260 : 500);                            // al CHOCAR: 500 ms de gracia antes de poder resetear (Jorge)
   setTapLayer();
+  showRate();   // estrellas para calificar el nivel (ganes o choques)
 }
 
 let _lowWarned = false;
