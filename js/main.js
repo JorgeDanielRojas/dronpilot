@@ -3,10 +3,10 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 
-const VERSION = '0.12.0';   // v= para deploy/guard
+const VERSION = '0.13.0';   // v= para deploy/guard
 const $ = s => document.querySelector(s);
 const DRONE_R = 0.30;      // radio de colisión del dron (esfera)
-const PICKUP_R = 0.75;     // radio para recolectar un punto
+const PICKUP_R = 1.0;      // radio para recolectar un punto (0.75→1.0: costaba agarrarlos, Jorge 2026-07-12)
 // persistencia (namespace dron_* — 2 productos por origen no colisionan)
 const LS = {
   get(k, d) { try { const v = localStorage.getItem('dron_' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
@@ -57,7 +57,7 @@ const CRAFT_TUNE = {
   drone: {},
   coax: { maxSpeed: 6.0, fwdAccel: 8.6, drag: 1.5, yawMax: 1.7, yawAccel: 4.0, tiltMax: 0.46, rollFactor: 0.30, wobbleAmp: 0.2, riseDamp: 3.6, batterySec: 28, rotorIdleRPM: 18, rotorFullRPM: 46 },
   bear: { maxSpeed: 6.5, fwdAccel: 9.5, drag: 1.45, yawMax: 1.9, yawAccel: 4.4, tiltMax: 0.78, rollFactor: 0.52, wobbleAmp: 0.48, riseDamp: 3.4, batterySec: 32, rotorIdleRPM: 22, rotorFullRPM: 52 },   // tilt/wobble fuertes: Jorge quiere que se MENEE
-  fly: { maxSpeed: 5.6, fwdAccel: 8.0, drag: 1.6, yawMax: 2.0, yawAccel: 4.6, tiltMax: 0.42, rollFactor: 0.36, wobbleAmp: 0.34, riseDamp: 3.0, batterySec: 40, rotorIdleRPM: 10, rotorFullRPM: 22 },   // mariposa: flotona, aleteo = rotorRPM
+  fly: { maxSpeed: 5.6, fwdAccel: 8.0, drag: 1.6, yawMax: 2.0, yawAccel: 4.6, tiltMax: 0.42, rollFactor: 0.36, wobbleAmp: 0.34, riseDamp: 3.0, batterySec: 40, rotorIdleRPM: 10, rotorFullRPM: 11 },   // mariposa: flotona, aleteo = rotorRPM (máx a la mitad, Jorge 2026-07-12)
 };
 // giro (rad) que pone la NARIZ del modelo mirando a −Z (dirección de vuelo). Se calibra con render.
 const _AXY = new THREE.Vector3(0, 1, 0);
@@ -139,11 +139,13 @@ function loadCraft(kind) {
     let s = targetLen / horiz;
     if (src.maxH && size.y * s > src.maxH) s = src.maxH / size.y;   // nave alta (oso): que no sea una torre
     m.scale.setScalar(s);
-    // centrar en el origen del holder
-    const box2 = new THREE.Box3().setFromObject(m); const c = new THREE.Vector3(); box2.getCenter(c);
-    m.position.sub(c);
     // ORIENTAR: girar el modelo para que su NARIZ mire hacia adelante (−Z = dirección de vuelo)
     m.rotation.y = CRAFT_YAW[kind] || 0;
+    // centrar en el origen del holder — DESPUÉS de rotar: si se centra antes, el giro de 180° (CRAFT_YAW)
+    // descentra el contenido en −2·(offset crudo del modelo) → la mariposa quedaba 0.59 m ADELANTE del
+    // collider (esfera en phys.pos) y atravesaba paredes. Medir tras rotar centra bien las 4 naves.
+    const box2 = new THREE.Box3().setFromObject(m); const c = new THREE.Vector3(); box2.getCenter(c);
+    m.position.sub(c);
     // rotores: SOLO los pivotes de hélice (no las mallas hijas '_Material_0' → si giro ambos se cancelan)
     const RX = /prop|rotor|blade|helice|hélice/i;
     rotors = []; wings = [];
@@ -328,7 +330,7 @@ function buildLevel(idx) {
   $('#levelName').textContent = 'Nivel ' + (idx + 1) + ' · ' + house.name;
   $('#touch').classList.add('hidden');
   $('#timer').classList.add('hidden');
-  showBanner('', 'Toca para despegar');       // sin botón: toca la pantalla para volar
+  showBanner('', '');       // sin botón: toca la pantalla para volar
   setTapLayer();
   updateBattery();
 }
@@ -433,6 +435,11 @@ function tumbleBear() {
   if (!tp || !drone.userData.model) { explode(phys.pos); return; }   // GLB aún no cargó
   tp.updateWorldMatrix(true, true);
   scene.attach(tp);   // el conjunto ENTERO (oso + propela + mástil) sale del holder conservando su pose
+  // el oso choca PEGADO al muro (su cuerpo es fino, collider ~0.19 al frente); si la pieza (R 0.26) NACE
+  // solapada con la pared, el asentado refleja los 3 ejes y NUNCA cae → sacarla del muro por el sentido
+  // contrario al golpe hasta que su esfera libre (Jorge: el peluche cae al piso y rebota, no se queda flotando).
+  { const pos = tp.position; let hx = _impactV.x, hz = _impactV.z; const hl = Math.hypot(hx, hz);
+    if (hl > 0.05) { hx /= hl; hz /= hl; for (let k = 0; k < 24 && debrisHit(pos.x, pos.y, pos.z, 0.26); k++) { pos.x -= hx * 0.03; pos.z -= hz * 0.03; } } }
   debris.push({
     mesh: tp, R: 0.26, stay: true, life: 0,
     v: { x: -_impactV.x * 0.55, y: Math.max(1.4, -_impactV.y * 0.4 + 1.2), z: -_impactV.z * 0.55 },   // rebote del golpe: atrás y arriba
@@ -500,7 +507,7 @@ function stepDebris(dt) {
         try { if (_crashSrc) { _crashSrc.stop(); _crashSrc = null; } } catch (e) {}   // el estrellarse NO suena sobre el gol (Jorge)
         house.goal.mesh.visible = false; popBurst(g.x, g.y, g.z, 0xffd23f);
         if (!playOne('deadwin', 0.9)) synthWin();   // arcade REAL solo aquí (Pixabay, Jorge); melodía-identidad → SIN pitch-var
-        const bn = $('#banner'); $('#bTitle').textContent = '☠️🏁 ¡GOL DE MUERTO!'; $('#bHint').textContent = 'La pieza llegó por ti · Toca para seguir'; $('#bBoard').innerHTML = ''; bn.classList.remove('hidden');
+        const bn = $('#banner'); $('#bTitle').textContent = '☠️🏁 ¡GOL DE MUERTO!'; $('#bHint').textContent = 'La pieza llegó por ti'; $('#bBoard').innerHTML = ''; bn.classList.remove('hidden');
         LS.set('ach_deadgoal', true);
         setTapLayer();
       }
@@ -509,13 +516,31 @@ function stepDebris(dt) {
   }
 }
 
-// ---------- colisión dron (esfera) vs FORMAS reales (box/sphere/cyl) — delega en el módulo puro ----------
+// ---------- colisión de la NAVE vs FORMAS reales (box/sphere/cyl) — delega en el módulo puro ----------
 // Precisa: sólo choca si toca la forma real del objeto, no su caja envolvente (p.ej. pasa al lado del
 // poste fino de la lámpara). Muros/techo = AABB exacto; obstáculos = compuestos por sub-formas.
+// El COLLIDER DE LA NAVE calza SU silueta real (medido con test/measure_craft.js): dron/coax = 1 esfera;
+// oso = cápsula VERTICAL (alto y fino) → no choca con el aire de los lados; mariposa = disco ANCHO y PLANO
+// (5 esferas) → las puntas de las alas SÍ chocan y no atraviesa por arriba/abajo. Offsets en marco local
+// (nariz −Z, derecha +X, arriba +Y), centrados en phys.pos; se rotan por la orientación real de la malla.
+const CRAFT_COLLIDER = {
+  drone: [{ dx: 0, dy: 0, dz: 0, r: DRONE_R }],
+  coax:  [{ dx: 0, dy: 0, dz: 0, r: DRONE_R }],
+  bear:  [{ dx: 0, dy: -0.155, dz: 0, r: 0.185 }, { dx: 0, dy: 0, dz: 0, r: 0.185 }, { dx: 0, dy: 0.155, dz: 0, r: 0.185 }],   // 0.68 alto × 0.37 ancho
+  fly:   [{ dx: 0, dy: 0, dz: 0, r: 0.19 }, { dx: -0.15, dy: 0, dz: 0, r: 0.19 }, { dx: 0.15, dy: 0, dz: 0, r: 0.19 }, { dx: 0, dy: 0, dz: -0.10, r: 0.19 }, { dx: 0, dy: 0, dz: 0.10, r: 0.19 }],   // 0.68 ancho × 0.58 fondo × 0.38 alto (plano)
+};
 function hitWorld(p) {
-  let h = window.hitColliders(house.colliders, p.x, p.y, p.z, DRONE_R);
-  if (h) return h;
-  if (house.movers) for (const m of house.movers) { h = window.hitColliders(m.colliders, p.x, p.y, p.z, DRONE_R); if (h) return h; }   // obstáculos con movimiento (posición viva)
+  const spheres = CRAFT_COLLIDER[craft] || CRAFT_COLLIDER.drone;
+  const ry = drone ? drone.rotation.y : -phys.yaw;   // orientación real de la malla (holder.rotation.y = −yaw)
+  const cy = Math.cos(ry), sy = Math.sin(ry);
+  for (const sp of spheres) {
+    const wx = p.x + sp.dx * cy + sp.dz * sy;         // offset local rotado por yaw (giro sobre Y) → mundo
+    const wy = p.y + sp.dy;
+    const wz = p.z - sp.dx * sy + sp.dz * cy;
+    let h = window.hitColliders(house.colliders, wx, wy, wz, sp.r);
+    if (h) return h;
+    if (house.movers) for (const m of house.movers) { h = window.hitColliders(m.colliders, wx, wy, wz, sp.r); if (h) return h; }   // obstáculos con movimiento (posición viva)
+  }
   return null;
 }
 
@@ -708,14 +733,14 @@ function endLevel(win) {
     if (isBest) LS.set('best' + levelIdx, +levelTime.toFixed(2));
     // TIEMPO + LEADERBOARD visibles al ganar (restaurado Jorge 2026-07-12; el resto de la UI sigue minimal)
     $('#bTitle').textContent = (isBest && best != null ? '🏆 ¡NUEVO MEJOR TIEMPO! · ' : '¡Llegaste! · ') + levelTime.toFixed(1) + 's';
-    $('#bHint').textContent = levelIdx >= 49 ? 'Toca para repetir' : 'Toca para seguir';
+    $('#bHint').textContent = '';
     $('#bBoard').innerHTML = ''; $('#banner').classList.remove('hidden');
     submitScore(levelIdx, levelTime);                                          // envía (o solo lee en modo sin marca) + pinta la tabla
   } else {
     // NO tapamos la pantalla: se VE el choque — el dron se parte en SUS pedazos reales y la animación sigue.
     const noBattery = phys.battery <= 0;
     crashCraft();
-    showBanner(noBattery ? '🔋 Sin batería' : '💥 ¡Chocaste!', 'Toca para reintentar');
+    showBanner(noBattery ? '🔋 Sin batería' : '💥 ¡Chocaste!', '');
   }
   $('#timer').classList.add('hidden');
   _tapArm = performance.now() + (win ? 260 : 500);                            // al CHOCAR: 500 ms de gracia antes de poder resetear (Jorge)
@@ -1061,6 +1086,8 @@ window.__sim = {
   get house() { return house; }, get drone() { return drone; },
   setLevel(n) { levelIdx = n; buildLevel(n); },
   takeoff: doTakeoff,
+  hit(x, y, z) { return hitWorld({ x, y, z }); },   // prueba: ¿el collider de la nave choca en (x,y,z)?
+  collider() { return CRAFT_COLLIDER[craft] || CRAFT_COLLIDER.drone; },
   freeze(v) { _freezeCam = v; },
   start() { $('#pre').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); },
   info() { return { state, level: levelIdx, craft, pos: phys.pos, battery: phys.battery, flightHeight, rotors: rotors.length, fx: fx.length, trapsArmed: house ? house.traps.filter(t => t.armed).length : 0, points: house ? { got: house.collectibles.length - house.collectibles.filter(c => !c.taken).length, need: house.collectibles.length } : { got: 0, need: 0 }, walls: house ? house.walls.length : 0 }; },
