@@ -3,7 +3,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 
-const VERSION = '0.15.0';   // v= para deploy/guard
+const VERSION = '0.16.0';   // v= para deploy/guard
 const $ = s => document.querySelector(s);
 const DRONE_R = 0.30;      // radio de colisión del dron (esfera)
 const PICKUP_R = 1.0;      // radio para recolectar un punto (0.75→1.0: costaba agarrarlos, Jorge 2026-07-12)
@@ -700,10 +700,19 @@ function renderBoard(list, level, myTime, myName) {
   el.innerHTML = rows; el.style.display = 'inline-block';
 }
 function hideBanner() { $('#banner').classList.add('hidden'); }
-// ---- calificación del nivel: 5 estrellas (SOLO guarda la opinión por nivel en dron_rate<idx>; no afecta nada más) ----
+// ---- calificación del nivel: 5 estrellas ----
+// Guarda local (precarga) Y envía al servidor (rate.php) para que Jorge recabe las opiniones de los que prueban.
+// uid anónimo por dispositivo → distingue a cada amigo sin pedir login; upsert por (uid,level) en el server.
+const RATE_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname === 'legacy.tuescuelavirtual.com')
+  ? 'rate.php' : 'https://legacy.tuescuelavirtual.com/dronpilot/rate.php';
+let UID = LS.get('uid', ''); if (!UID) { UID = Math.random().toString(36).slice(2, 10); LS.set('uid', UID); }
+function sendRate(level, stars) {   // fire-and-forget: si falla la red el juego sigue igual
+  try { fetch(RATE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: (playerName || 'Piloto'), uid: UID, level: level, stars: stars }) }).catch(() => {}); } catch (e) {}
+}
 function paintRate(n) { document.querySelectorAll('#rate button').forEach(b => b.classList.toggle('on', +b.dataset.n <= n)); }
 function showRate() { paintRate(LS.get('rate' + levelIdx, 0)); $('#rate').classList.remove('hidden'); }
-document.querySelectorAll('#rate button').forEach(b => b.addEventListener('click', () => { const n = +b.dataset.n; LS.set('rate' + levelIdx, n); paintRate(n); }));
+document.querySelectorAll('#rate button').forEach(b => b.addEventListener('click', () => { const n = +b.dataset.n; LS.set('rate' + levelIdx, n); paintRate(n); sendRate(levelIdx, n); }));
 function setTapLayer() { $('#tapLayer').style.pointerEvents = (state === 'ready' || state === 'win' || state === 'lose') ? 'auto' : 'none'; }
 let _tapArm = 0;   // pequeña guarda: no reintentar por el mismo toque del choque
 function onTap() {
