@@ -78,14 +78,28 @@ const KEY = 'dron_taps';
 let taps = [];
 try { taps = JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { taps = []; }
 
-// cola barajada: 25 de cada dirección por ronda; al vaciarse se rebaraja otra ronda (se puede seguir sumando)
+// cola de una ronda: 25 de cada dirección; al vaciarse se genera otra ronda (se puede seguir sumando).
+// ⭐ NUNCA la misma dirección dos veces seguidas (Jorge 2026-07-15: "arriba derecha derecha, eso está mal,
+// siempre distintas"). Barajar a secas SÍ produce repetidos pegados — por eso se genera en orden:
+// en cada paso se elige, entre las direcciones que NO son la anterior, una de las que MÁS quedan (empates
+// al azar). Con 25/25/25/25 esa regla nunca se queda sin salida (el montón grande siempre se puede colocar).
+// `prev` = última dirección servida: así el salto ENTRE rondas tampoco repite.
 let queue = [];
-function refill() {
-  queue = [];
-  DIRS.forEach(d => { for (let i = 0; i < PER_DIR; i++) queue.push(d); });
-  for (let i = queue.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [queue[i], queue[j]] = [queue[j], queue[i]]; }
+function refill(prev) {
+  const left = new Map(DIRS.map(d => [d, PER_DIR]));
+  const seq = [];
+  let last = prev || null;
+  for (let n = 0; n < ROUND; n++) {
+    let cand = DIRS.filter(d => left.get(d) > 0 && d !== last);
+    if (!cand.length) cand = DIRS.filter(d => left.get(d) > 0);   // salvavidas: no debería pasar nunca
+    const max = Math.max.apply(null, cand.map(d => left.get(d)));
+    const top = cand.filter(d => left.get(d) === max);
+    const pick = top[Math.floor(Math.random() * top.length)];
+    seq.push(pick); left.set(pick, left.get(pick) - 1); last = pick;
+  }
+  queue = seq.reverse();   // pop() saca del final → se sirve en el orden generado
 }
-refill();
+refill(null);
 let cur = queue.pop();
 
 function paintPrompt() {
@@ -104,7 +118,7 @@ $('#board').addEventListener('pointerdown', e => {
   save();
   const f = $('#flash'); f.style.left = e.clientX + 'px'; f.style.top = e.clientY + 'px';
   f.style.background = cur.col; f.style.animation = 'none'; void f.offsetWidth; f.style.animation = 'pop .35s ease-out';
-  if (!queue.length) { refill(); if (taps.length % ROUND === 0) { paintProg(); showMap(); } }
+  if (!queue.length) { refill(cur); if (taps.length % ROUND === 0) { paintProg(); showMap(); } }   // cur = última servida → la ronda nueva no la repite
   cur = queue.pop(); paintPrompt(); paintProg();
 });
 
@@ -143,7 +157,7 @@ $('#expClose').addEventListener('click', () => $('#exp').classList.remove('show'
 
 $('#btnClear').addEventListener('click', () => {
   if (!confirm('¿Borrar los ' + taps.length + ' toques guardados?')) return;
-  taps = []; save(); refill(); cur = queue.pop(); paintPrompt(); paintProg(); $('#map').classList.remove('show');
+  taps = []; save(); refill(null); cur = queue.pop(); paintPrompt(); paintProg(); $('#map').classList.remove('show');
 });
 
 // lupa de iOS: matar touchend/dblclick fuera de botones/textarea (mismo remedio que el juego)

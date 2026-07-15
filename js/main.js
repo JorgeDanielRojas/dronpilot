@@ -3,7 +3,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 
-const VERSION = '0.19.0';   // v= para deploy/guard
+const VERSION = '0.20.0';   // v= para deploy/guard
 const $ = s => document.querySelector(s);
 const DRONE_R = 0.30;      // radio de colisión del dron (esfera)
 const PICKUP_R = 1.0;      // radio para recolectar un punto (0.75→1.0: costaba agarrarlos, Jorge 2026-07-12)
@@ -710,6 +710,30 @@ function sendRate(level, stars) {   // fire-and-forget: si falla la red el juego
   try { fetch(RATE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name: (playerName || 'Piloto'), uid: UID, level: level, stars: stars }) }).catch(() => {}); } catch (e) {}
 }
+// 🛟 RESCATE de las estrellas viejas (Jorge 2026-07-15). Hasta v0.15.0 las estrellas se guardaban SOLO en
+// localStorage y nunca salían del teléfono. Al abrir, se suben las que nunca se enviaron — callado, una
+// sola vez por nivel (marca `dron_rsent`). Si no hay red, se reintenta en la próxima apertura.
+// rate.php hace upsert por (uid,level), así que reenviar no duplica ni infla el conteo.
+async function backfillRates() {
+  let sent = LS.get('rsent', []); if (!Array.isArray(sent)) sent = [];
+  const pend = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i); const m = k && k.match(/^dron_rate(\d+)$/);
+    if (!m) continue;
+    const lv = +m[1], n = LS.get('rate' + lv, 0);
+    if (n >= 1 && n <= 5 && sent.indexOf(lv) < 0) pend.push([lv, n]);
+  }
+  if (!pend.length) return;
+  for (const [lv, n] of pend) {
+    try {
+      const r = await fetch(RATE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: (playerName || 'Piloto'), uid: UID, level: lv, stars: n }) });
+      if (!r || !r.ok) break;                       // servidor caído → dejar el resto para la próxima
+      sent.push(lv); LS.set('rsent', sent);
+    } catch (e) { break; }                          // sin red → se reintenta al abrir de nuevo
+  }
+}
+backfillRates();
 function paintRate(n) { document.querySelectorAll('#rate button').forEach(b => b.classList.toggle('on', +b.dataset.n <= n)); }
 function showRate() { paintRate(LS.get('rate' + levelIdx, 0)); $('#rate').classList.remove('hidden'); }
 document.querySelectorAll('#rate button').forEach(b => b.addEventListener('click', () => { const n = +b.dataset.n; LS.set('rate' + levelIdx, n); paintRate(n); sendRate(levelIdx, n); }));
@@ -1115,21 +1139,39 @@ function buildZones() {
     chev(W - (R1 + R2) / 2, cy, 'u');
     chev(W - R1 / 2, cy, 'd');
   } else {
-    const RC = 0.07 * H;               // radio del círculo (escala con la pantalla) ≈ 26 px en el iPhone 11
-    // IZQUIERDA — alineados en HORIZONTAL: MISMA y los dos. x medidas del heat map (◀ dentro, ▶ en el anillo).
+    // radio del círculo, escala con la pantalla. IZQUIERDA +40% (Jorge 2026-07-15: "para que sean más
+    // fáciles de apuntar"); DERECHA sin tocar por ahora. Esto es SOLO la cara visible — la zona táctil
+    // (zoneOf) no cambia: toda la zona sigue activando su botón, agrandar el círculo no agranda el área.
+    const RC = 0.07 * H;               // ≈ 26 px en el iPhone 11 (derecha)
+    const RC_IZQ = RC * 1.4;           // ≈ 37 px (izquierda)
+    // IZQUIERDA — alineados en HORIZONTAL: MISMA y los dos. x medidas del heat map (◀ dentro, ▶ en el anillo),
+    // CORRIDAS 0.0272·H a la derecha (Jorge 2026-07-15) para que el punto medio del par caiga en el centro
+    // real de la zona a esa altura: la zona llega hasta x=√(R2²−dy²)=0.6851·H → su centro es 0.3425·H.
     const yL = H - 0.2215 * H;         // altura común = promedio de las dos nubes (0.2288 y 0.2141)
-    const xIzq = 0.2041 * H, xDer = 0.4266 * H;
+    const xIzq = 0.2313 * H, xDer = 0.4538 * H;
     // DERECHA — alineados en VERTICAL: MISMA x los dos. y distintas (▼ dentro, ▲ en el anillo).
     const xR = W - 0.3305 * H;         // columna común = promedio de las dos nubes (0.3407 y 0.3203)
     const yAba = H - 0.1349 * H;       // ▼ atrás: donde cayó el pulgar
     const yArr = H - 0.3100 * H;       // ▲ acelerar: subido un pelo desde 0.2926 para que no se toquen
-    const P = [[xIzq, yL, 'l'], [xDer, yL, 'r'], [xR, yArr, 'u'], [xR, yAba, 'd']];
-    for (const [x, y, g] of P) { circ(x, y, RC); chev(x, y, g, 0.7); }
+    const P = [[xIzq, yL, 'l', RC_IZQ], [xDer, yL, 'r', RC_IZQ], [xR, yArr, 'u', RC], [xR, yAba, 'd', RC]];
+    for (const [x, y, g, rr] of P) { circ(x, y, rr); chev(x, y, g, 0.7 * (rr / RC)); }   // el chevron crece con su círculo
   }
+}
+// ⚙ Giro del semicírculo DERECHO sobre su BISAGRA (Jorge 2026-07-15). La bisagra es el punto más a la
+// izquierda del círculo grande, que toca el borde de abajo: (W-R2, H). Girar ahí mueve el CENTRO del
+// semicírculo (y con él las dos zonas de la derecha) — o sea, mueve la ZONA, no solo el dibujo.
+// θ=0 deja la geometría IDÉNTICA a la de siempre (el centro vuelve a (W,H)). En grados; + = hacia abajo/derecha.
+let ZONE_ROT = 0;
+function rightPivot(W, H, R2) {
+  const t = ZONE_ROT * Math.PI / 180;
+  return { cx: W - R2 + R2 * Math.cos(t), cy: H + R2 * Math.sin(t) };   // centro girado sobre la bisagra (W-R2,H)
 }
 function zoneOf(px, py) {
   const W = innerWidth, H = innerHeight, { R1, R2 } = zoneRadii();
-  const left = px < W / 2, r = Math.hypot(px - (left ? 0 : W), py - H);
+  const left = px < W / 2;
+  let r;
+  if (left) r = Math.hypot(px - 0, py - H);
+  else { const c = rightPivot(W, H, R2); r = Math.hypot(px - c.cx, py - c.cy); }
   if (r > R2) return null;                                        // fuera de las zonas → deja pasar el tap (menú/HUD)
   return left ? (r < R1 ? 'left' : 'right') : (r < R1 ? 'back' : 'accel');
 }
@@ -1183,6 +1225,8 @@ window.__sim = {
   takeoff: doTakeoff,
   hit(x, y, z) { return hitWorld({ x, y, z }); },   // prueba: ¿el collider de la nave choca en (x,y,z)?
   zoneOf,                                           // prueba: ¿qué botón táctil cae en el píxel (x,y)? (ground truth del mapa de zonas)
+  setZoneRot(d) { ZONE_ROT = d; buildZones(); },    // prueba: girar el semicírculo derecho sobre su bisagra (grados)
+  getZoneRot() { return ZONE_ROT; },
   collider() { return CRAFT_COLLIDER[craft] || CRAFT_COLLIDER.drone; },
   freeze(v) { _freezeCam = v; },
   start() { $('#pre').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); },
