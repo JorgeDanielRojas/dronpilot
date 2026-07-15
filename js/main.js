@@ -3,7 +3,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 
-const VERSION = '0.18.0';   // v= para deploy/guard
+const VERSION = '0.19.0';   // v= para deploy/guard
 const $ = s => document.querySelector(s);
 const DRONE_R = 0.30;      // radio de colisión del dron (esfera)
 const PICKUP_R = 1.0;      // radio para recolectar un punto (0.75→1.0: costaba agarrarlos, Jorge 2026-07-12)
@@ -1051,12 +1051,15 @@ function buildZones() {
   const W = innerWidth, H = innerHeight, { R1, R2 } = zoneRadii();
   zonesSvg.setAttribute('viewBox', `0 0 ${W} ${H}`);
   zonesSvg.innerHTML = '';
-  // BORDE de los SEMICÍRCULOS (Jorge 2026-07-15, su palabra): la raya cae EXACTO donde termina la zona.
-  // Cada esquina = 1 semicírculo partido en 2 pedazos: "adentro" (pegado a la esquina, r<R1) y "afuera"
-  // (anillo R1..R2, hacia el centro). Por semicírculo van 2 rayas:
-  //   raya de ADENTRO = arco R1 (parte el semicírculo en dos)   ·   raya de AFUERA = arco R2 (borde exterior)
+  // RAYAS = borde de los SEMICÍRCULOS (palabra de Jorge). Cada esquina = 1 semicírculo partido en 2 pedazos:
+  // "adentro" (pegado a la esquina, r<R1) y "afuera" (anillo R1..R2). Por semicírculo, 2 rayas:
+  //   raya de ADENTRO = arco R1 (parte el semicírculo)   ·   raya de AFUERA = arco R2 (borde exterior)
   // Los arcos se generan MUESTREANDO ÁNGULOS con la MISMA fórmula del hit-test (r = hypot(px-cx, py-H)),
   // no con arcos SVG a mano: así la raya no puede quedar mal orientada — es la frontera real, por construcción.
+  // ⚠ OCULTAS por pedido de Jorge (2026-07-15: "quita las líneas curvas, deja solo los botones… igual deja
+  // esas líneas ahí, puede que las utilicemos luego"). Poner SHOW_RAYAS=true para devolverlas; el gate
+  // verify_botones.js las vuelve a medir solo si están dibujadas. El ÁREA táctil no depende de esto.
+  const SHOW_RAYAS = false;
   const arcPts = (cx, r) => {          // cuarto de arco de la esquina (cx,H), del borde de abajo al borde de al lado
     const p = [], N = 32, sx = cx === 0 ? 1 : -1;
     for (let i = 0; i <= N; i++) { const t = (i / N) * (Math.PI / 2); p.push((cx + sx * r * Math.cos(t)).toFixed(1) + ',' + (H - r * Math.sin(t)).toFixed(1)); }
@@ -1069,8 +1072,60 @@ function buildZones() {
     pl.setAttribute('stroke-opacity', '0.5'); pl.setAttribute('stroke-width', '1.6'); pl.setAttribute('stroke-linecap', 'round');
     zonesSvg.appendChild(pl); return pl;
   };
-  raya(0, R1); raya(0, R2);            // semicírculo IZQUIERDO: raya de adentro + raya de afuera
-  raya(W, R1); raya(W, R2);            // semicírculo DERECHO:   raya de adentro + raya de afuera
+  if (SHOW_RAYAS) {
+    raya(0, R1); raya(0, R2);          // semicírculo IZQUIERDO: raya de adentro + raya de afuera
+    raya(W, R1); raya(W, R2);          // semicírculo DERECHO:   raya de adentro + raya de afuera
+  }
+
+  // CHEVRONS. Dos ubicaciones (Jorge 2026-07-15):
+  //  'bottom' = los 4 alineados en el borde de abajo, cada uno al centro de SU franja (en y=H las zonas
+  //             caen en franjas limpias: [0,R1]=◀ · [R1,R2]=▶ · [W-R2,W-R1]=▲ · [W-R1,W]=▼). El chevron
+  //             no dice "el botón está aquí" sino "esta franja es este botón".
+  //  'heat'   = donde el pulgar de Jorge cae DE VERDAD, medido de 132 toques del tablero toques.html
+  //             (test/measure_heatmap.js sobre la captura), pero ALINEADO a la fuerza (Jorge 2026-07-15
+  //             "forza un poquito… deben coincidir en el borde inferior y superior"):
+  //               IZQUIERDA = par en HORIZONTAL → misma y (mismo borde arriba/abajo), distinta x.
+  //               DERECHA   = par en VERTICAL   → misma x (mismo borde izq/der), distinta y.
+  //             Todo en fracciones del ALTO (como R1/R2) → la alineación y las zonas se mueven juntas
+  //             al cambiar de pantalla. El ▲ se sube un pelo porque a la altura medida los círculos se
+  //             TOCABAN (59 px de separación vs 60 que piden dos radios de 30). Verificado por gate.
+  const CHEV_PLACE = 'heat';
+  // formas SIMÉTRICAS respecto a su ancla → los 4 quedan exactamente a la misma altura (lo gatea verify_rayas)
+  const CH = { l: [[10, -12], [-10, 0], [10, 12]], r: [[-10, -12], [10, 0], [-10, 12]], d: [[-12, -10], [0, 10], [12, -10]], u: [[-12, 10], [0, -10], [12, 10]] };
+  const chev = (cx, cy, g, s) => {
+    s = s || 1;
+    const pl = document.createElementNS(SVGNS, 'polyline');
+    pl.setAttribute('points', CH[g].map(q => (cx + q[0] * s).toFixed(1) + ',' + (cy + q[1] * s).toFixed(1)).join(' '));
+    pl.setAttribute('fill', 'none'); pl.setAttribute('stroke', '#ffffff');
+    pl.setAttribute('stroke-opacity', '0.5'); pl.setAttribute('stroke-width', '2');
+    pl.setAttribute('stroke-linecap', 'round'); pl.setAttribute('stroke-linejoin', 'round');
+    zonesSvg.appendChild(pl);
+  };
+  const circ = (cx, cy, rr) => {
+    const c = document.createElementNS(SVGNS, 'circle');
+    c.setAttribute('cx', cx.toFixed(1)); c.setAttribute('cy', cy.toFixed(1)); c.setAttribute('r', rr);
+    c.setAttribute('fill', 'none'); c.setAttribute('stroke', '#ffffff');
+    c.setAttribute('stroke-opacity', '0.4'); c.setAttribute('stroke-width', '1.6');
+    zonesSvg.appendChild(c);
+  };
+  if (CHEV_PLACE === 'bottom') {
+    const cy = H - 22;                 // misma altura para los 4 = alineados abajo
+    chev(R1 / 2, cy, 'l');
+    chev((R1 + R2) / 2, cy, 'r');
+    chev(W - (R1 + R2) / 2, cy, 'u');
+    chev(W - R1 / 2, cy, 'd');
+  } else {
+    const RC = 0.07 * H;               // radio del círculo (escala con la pantalla) ≈ 26 px en el iPhone 11
+    // IZQUIERDA — alineados en HORIZONTAL: MISMA y los dos. x medidas del heat map (◀ dentro, ▶ en el anillo).
+    const yL = H - 0.2215 * H;         // altura común = promedio de las dos nubes (0.2288 y 0.2141)
+    const xIzq = 0.2041 * H, xDer = 0.4266 * H;
+    // DERECHA — alineados en VERTICAL: MISMA x los dos. y distintas (▼ dentro, ▲ en el anillo).
+    const xR = W - 0.3305 * H;         // columna común = promedio de las dos nubes (0.3407 y 0.3203)
+    const yAba = H - 0.1349 * H;       // ▼ atrás: donde cayó el pulgar
+    const yArr = H - 0.3100 * H;       // ▲ acelerar: subido un pelo desde 0.2926 para que no se toquen
+    const P = [[xIzq, yL, 'l'], [xDer, yL, 'r'], [xR, yArr, 'u'], [xR, yAba, 'd']];
+    for (const [x, y, g] of P) { circ(x, y, RC); chev(x, y, g, 0.7); }
+  }
 }
 function zoneOf(px, py) {
   const W = innerWidth, H = innerHeight, { R1, R2 } = zoneRadii();
