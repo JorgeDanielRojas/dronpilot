@@ -3,7 +3,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 
-const VERSION = '0.17.1';   // v= para deploy/guard
+const VERSION = '0.18.0';   // v= para deploy/guard
 const $ = s => document.querySelector(s);
 const DRONE_R = 0.30;      // radio de colisión del dron (esfera)
 const PICKUP_R = 1.0;      // radio para recolectar un punto (0.75→1.0: costaba agarrarlos, Jorge 2026-07-12)
@@ -1051,21 +1051,26 @@ function buildZones() {
   const W = innerWidth, H = innerHeight, { R1, R2 } = zoneRadii();
   zonesSvg.setAttribute('viewBox', `0 0 ${W} ${H}`);
   zonesSvg.innerHTML = '';
-  // 4 círculos con BORDE BLANCO (uno por zona), igual que el diseño original — referencia de dónde tocar
-  // para los que prueban (Jorge 2026-07-14). SIN flechas (regla dura). El área clickeable sigue siendo la
-  // zona diagonal completa; el círculo es solo la cara visible sobre la diagonal de cada esquina.
-  const C = (cx, cy) => {
-    const c = document.createElementNS(SVGNS, 'circle');
-    c.setAttribute('cx', cx.toFixed(1)); c.setAttribute('cy', cy.toFixed(1)); c.setAttribute('r', 36);
-    c.setAttribute('fill', 'none');
-    c.setAttribute('stroke', '#ffffff'); c.setAttribute('stroke-opacity', '0.45'); c.setAttribute('stroke-width', '2');
-    zonesSvg.appendChild(c); return c;
+  // BORDE de los SEMICÍRCULOS (Jorge 2026-07-15, su palabra): la raya cae EXACTO donde termina la zona.
+  // Cada esquina = 1 semicírculo partido en 2 pedazos: "adentro" (pegado a la esquina, r<R1) y "afuera"
+  // (anillo R1..R2, hacia el centro). Por semicírculo van 2 rayas:
+  //   raya de ADENTRO = arco R1 (parte el semicírculo en dos)   ·   raya de AFUERA = arco R2 (borde exterior)
+  // Los arcos se generan MUESTREANDO ÁNGULOS con la MISMA fórmula del hit-test (r = hypot(px-cx, py-H)),
+  // no con arcos SVG a mano: así la raya no puede quedar mal orientada — es la frontera real, por construcción.
+  const arcPts = (cx, r) => {          // cuarto de arco de la esquina (cx,H), del borde de abajo al borde de al lado
+    const p = [], N = 32, sx = cx === 0 ? 1 : -1;
+    for (let i = 0; i <= N; i++) { const t = (i / N) * (Math.PI / 2); p.push((cx + sx * r * Math.cos(t)).toFixed(1) + ',' + (H - r * Math.sin(t)).toFixed(1)); }
+    return p.join(' ');
   };
-  const di = R1 * 0.47, dm = (R1 + R2) / 2 * Math.SQRT1_2 + 10;   // interno (pegado a la esquina) / externo (hacia el centro), separados
-  zonePaths.left = C(di, H - di);            // IZQ interno ◀
-  zonePaths.right = C(dm, H - dm);           // IZQ externo ▶
-  zonePaths.back = C(W - di, H - di);        // DER interno ▼ atrás
-  zonePaths.accel = C(W - dm, H - dm);       // DER externo ▲ acelerar
+  const raya = (cx, r) => {
+    const pl = document.createElementNS(SVGNS, 'polyline');
+    pl.setAttribute('points', arcPts(cx, r));
+    pl.setAttribute('fill', 'none'); pl.setAttribute('stroke', '#ffffff');
+    pl.setAttribute('stroke-opacity', '0.5'); pl.setAttribute('stroke-width', '1.6'); pl.setAttribute('stroke-linecap', 'round');
+    zonesSvg.appendChild(pl); return pl;
+  };
+  raya(0, R1); raya(0, R2);            // semicírculo IZQUIERDO: raya de adentro + raya de afuera
+  raya(W, R1); raya(W, R2);            // semicírculo DERECHO:   raya de adentro + raya de afuera
 }
 function zoneOf(px, py) {
   const W = innerWidth, H = innerHeight, { R1, R2 } = zoneRadii();
@@ -1077,7 +1082,6 @@ const _zonePtrs = new Map();   // pointerId -> zona
 function applyZones() {
   const t = controls._touch; t.left = t.right = t.accel = t.back = false;
   for (const z of _zonePtrs.values()) if (z) t[z] = true;
-  for (const k in zonePaths) if (zonePaths[k]) zonePaths[k].setAttribute('stroke-opacity', t[k] ? '0.85' : '0.45');   // círculo activo = borde más marcado
 }
 const zonesActive = () => controls.mode === 'touch' && state === 'fly' && !$('#touch').classList.contains('hidden');
 addEventListener('pointerdown', e => {
@@ -1123,6 +1127,7 @@ window.__sim = {
   setLevel(n) { levelIdx = n; buildLevel(n); },
   takeoff: doTakeoff,
   hit(x, y, z) { return hitWorld({ x, y, z }); },   // prueba: ¿el collider de la nave choca en (x,y,z)?
+  zoneOf,                                           // prueba: ¿qué botón táctil cae en el píxel (x,y)? (ground truth del mapa de zonas)
   collider() { return CRAFT_COLLIDER[craft] || CRAFT_COLLIDER.drone; },
   freeze(v) { _freezeCam = v; },
   start() { $('#pre').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); },
