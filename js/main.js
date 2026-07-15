@@ -3,7 +3,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 
-const VERSION = '0.20.0';   // v= para deploy/guard
+const VERSION = '0.21.1';   // v= para deploy/guard
 const $ = s => document.querySelector(s);
 const DRONE_R = 0.30;      // radio de colisión del dron (esfera)
 const PICKUP_R = 1.0;      // radio para recolectar un punto (0.75→1.0: costaba agarrarlos, Jorge 2026-07-12)
@@ -1143,17 +1143,31 @@ function buildZones() {
     // fáciles de apuntar"); DERECHA sin tocar por ahora. Esto es SOLO la cara visible — la zona táctil
     // (zoneOf) no cambia: toda la zona sigue activando su botón, agrandar el círculo no agranda el área.
     const RC = 0.07 * H;               // ≈ 26 px en el iPhone 11 (derecha)
-    const RC_IZQ = RC * 1.4;           // ≈ 37 px (izquierda)
+    const RB = RC * 1.4;               // ≈ 37 px — mismo tamaño en los 4 (izquierda +40%, derecha la copia)
     // IZQUIERDA — alineados en HORIZONTAL: MISMA y los dos. x medidas del heat map (◀ dentro, ▶ en el anillo),
     // CORRIDAS 0.0272·H a la derecha (Jorge 2026-07-15) para que el punto medio del par caiga en el centro
     // real de la zona a esa altura: la zona llega hasta x=√(R2²−dy²)=0.6851·H → su centro es 0.3425·H.
     const yL = H - 0.2215 * H;         // altura común = promedio de las dos nubes (0.2288 y 0.2141)
     const xIzq = 0.2313 * H, xDer = 0.4538 * H;
-    // DERECHA — alineados en VERTICAL: MISMA x los dos. y distintas (▼ dentro, ▲ en el anillo).
-    const xR = W - 0.3305 * H;         // columna común = promedio de las dos nubes (0.3407 y 0.3203)
-    const yAba = H - 0.1349 * H;       // ▼ atrás: donde cayó el pulgar
-    const yArr = H - 0.3100 * H;       // ▲ acelerar: subido un pelo desde 0.2926 para que no se toquen
-    const P = [[xIzq, yL, 'l', RC_IZQ], [xDer, yL, 'r', RC_IZQ], [xR, yArr, 'u', RC], [xR, yAba, 'd', RC]];
+    // DERECHA — EN LOS CENTROS DEL HEAT MAP (Jorge 2026-07-15), o sea donde su pulgar derecho cae de verdad:
+    // apilados en columna (▲ arriba, ▼ abajo), no en espejo. Valores de la medición CORREGIDA (tolerancia 60;
+    // la de 26 perdía ~30% de los puntos y dejaba el ▲ 10.7 px abajo). Con la buena, la separación real es
+    // 67.3 px → ya NO hace falta el empujón de 6 px que le había dado al ▲.
+    // Los 4 del MISMO tamaño grande (Jorge 2026-07-15) y la derecha tratando de englobar sus toques.
+    // Medido (radio en px de juego para cubrir cada nube): ◀ 34.8 · ▼ 27.9 · ▶ 54.2 · ▲ 63.1 (todos) —
+    // con RB=36.8 quedan ENTEROS ◀ y ▼; ▶ y ▲ tienen la cola desparramada y no caben sin pisar al vecino.
+    // DERECHA — en columna sobre los centros del heat map (Jorge 2026-07-15, versión elegida).
+    // Los 4 del MISMO tamaño grande (RB). Choque conocido: dos círculos de RB piden 73.5 px de separación
+    // y entre los centros medidos hay 67.3 → el ▲ SUBE 14 px (0.3211→0.3590·H) para dejar 8 px de aire;
+    // el ▼ se queda EXACTO en su centro (su nube es apretada y le sobra sitio). Bajar el ▼ en vez de subir
+    // el ▲ lo pegaba al borde inferior. Cobertura medida: ◀ 100% · ▶ 93% · ▲ 72% · ▼ 100%.
+    const xR = W - 0.3290 * H;         // columna común = promedio de las 2 nubes (0.3413 y 0.3166)
+    const yArr = H - 0.3590 * H;       // ▲ acelerar → radio 0.4871·H (anillo ✓)  [subido para no tocar al ▼]
+    const yAba = H - 0.1417 * H;       // ▼ atrás    → radio 0.3582·H (esquina ✓) [centro exacto del heat map]
+    const P = [
+      [xIzq, yL, 'l', RB], [xDer, yL, 'r', RB],
+      [xR, yArr, 'u', RB], [xR, yAba, 'd', RB],
+    ];
     for (const [x, y, g, rr] of P) { circ(x, y, rr); chev(x, y, g, 0.7 * (rr / RC)); }   // el chevron crece con su círculo
   }
 }
